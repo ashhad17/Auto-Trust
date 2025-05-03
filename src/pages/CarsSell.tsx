@@ -1,0 +1,617 @@
+
+import React, { useState } from "react";
+import { Helmet } from "react-helmet-async";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Car, ChevronDown, Plus, Upload, Info } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+
+const makes = ["Toyota", "Honda", "Ford", "Chevrolet", "BMW", "Mercedes-Benz", "Audi", "Nissan", "Hyundai", "Kia"];
+
+const CarsSell = () => {
+  const [activeTab, setActiveTab] = useState("sell-form");
+  const [currentStep, setCurrentStep] = useState(1);
+  const { toast } = useToast();
+  const { isAuthenticated, openAuthModal } = useAuth();
+  
+  const [formData, setFormData] = useState({
+    make: "",
+    model: "",
+    year: "",
+    mileage: "",
+    price: "",
+    description: "",
+    condition: "Good",
+    exteriorColor: "",
+    interiorColor: "",
+    fuelType: "Gasoline",
+    transmission: "Automatic",
+    bodyType: "Sedan",
+    features: [] as string[],
+    images: [] as string[],
+    contactName: "",
+    contactPhone: "",
+    contactEmail: "",
+    location: "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleAddImage = () => {
+    // In a real app, this would open a file picker
+    // For demo purposes, let's just add a placeholder image URL
+    const newImage = `https://source.unsplash.com/featured/?car,${formData.make || 'vehicle'}&${Date.now()}`;
+    setFormData({ ...formData, images: [...formData.images, newImage] });
+  };
+  
+  const handleRemoveImage = (index: number) => {
+    const newImages = [...formData.images];
+    newImages.splice(index, 1);
+    setFormData({ ...formData, images: newImages });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!isAuthenticated) {
+      openAuthModal();
+      return;
+    }
+    
+    // In a real app, this would submit the form data to a backend
+    toast({
+      title: "Listing Created!",
+      description: "Your vehicle listing has been submitted successfully.",
+    });
+    
+    // Reset form and navigate to next step
+    setCurrentStep(4);
+  };
+
+  const features = [
+    "Bluetooth", "Backup Camera", "Navigation", "Heated Seats", 
+    "Sunroof", "Leather Seats", "Apple CarPlay", "Android Auto",
+    "Blind Spot Monitor", "Lane Departure Warning", "Cruise Control",
+    "Remote Start", "Keyless Entry", "Premium Audio", "Third Row Seating"
+  ];
+  
+  const handleFeatureToggle = (feature: string) => {
+    const newFeatures = formData.features.includes(feature) 
+      ? formData.features.filter(f => f !== feature) 
+      : [...formData.features, feature];
+      
+    setFormData({ ...formData, features: newFeatures });
+  };
+  
+  const nextStep = () => {
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1);
+      window.scrollTo(0, 0);
+    }
+  };
+  
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold">Vehicle Details</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Make*</label>
+                <Select 
+                  value={formData.make} 
+                  onValueChange={(value) => handleSelectChange("make", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select make" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {makes.map((make) => (
+                      <SelectItem key={make} value={make}>{make}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Model*</label>
+                <Input
+                  name="model"
+                  value={formData.model}
+                  onChange={handleChange}
+                  placeholder="e.g. Camry"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Year*</label>
+                <Input
+                  name="year"
+                  value={formData.year}
+                  onChange={handleChange}
+                  placeholder="e.g. 2020"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Mileage*</label>
+                <Input
+                  name="mileage"
+                  value={formData.mileage}
+                  onChange={handleChange}
+                  placeholder="e.g. 35000"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Exterior Color</label>
+                <Input
+                  name="exteriorColor"
+                  value={formData.exteriorColor}
+                  onChange={handleChange}
+                  placeholder="e.g. Blue"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Interior Color</label>
+                <Input
+                  name="interiorColor"
+                  value={formData.interiorColor}
+                  onChange={handleChange}
+                  placeholder="e.g. Black"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Fuel Type</label>
+                <Select 
+                  value={formData.fuelType} 
+                  onValueChange={(value) => handleSelectChange("fuelType", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select fuel type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Gasoline">Gasoline</SelectItem>
+                    <SelectItem value="Diesel">Diesel</SelectItem>
+                    <SelectItem value="Hybrid">Hybrid</SelectItem>
+                    <SelectItem value="Electric">Electric</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Transmission</label>
+                <Select 
+                  value={formData.transmission} 
+                  onValueChange={(value) => handleSelectChange("transmission", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select transmission" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Automatic">Automatic</SelectItem>
+                    <SelectItem value="Manual">Manual</SelectItem>
+                    <SelectItem value="CVT">CVT</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Body Type</label>
+                <Select 
+                  value={formData.bodyType} 
+                  onValueChange={(value) => handleSelectChange("bodyType", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select body type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Sedan">Sedan</SelectItem>
+                    <SelectItem value="SUV">SUV</SelectItem>
+                    <SelectItem value="Truck">Truck</SelectItem>
+                    <SelectItem value="Coupe">Coupe</SelectItem>
+                    <SelectItem value="Hatchback">Hatchback</SelectItem>
+                    <SelectItem value="Convertible">Convertible</SelectItem>
+                    <SelectItem value="Wagon">Wagon</SelectItem>
+                    <SelectItem value="Van">Van</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Condition</label>
+                <Select 
+                  value={formData.condition} 
+                  onValueChange={(value) => handleSelectChange("condition", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select condition" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Excellent">Excellent</SelectItem>
+                    <SelectItem value="Good">Good</SelectItem>
+                    <SelectItem value="Fair">Fair</SelectItem>
+                    <SelectItem value="Poor">Poor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-2">
+                <label className="text-sm font-medium">Price ($)*</label>
+                <Input
+                  name="price"
+                  value={formData.price}
+                  onChange={handleChange}
+                  placeholder="e.g. 25000"
+                />
+              </div>
+              
+              <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-2">
+                <label className="text-sm font-medium">Description</label>
+                <Textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Describe your vehicle condition, history, and any other important details..."
+                  className="min-h-[150px]"
+                />
+              </div>
+            </div>
+            
+            <div className="pt-4 flex justify-end">
+              <Button onClick={nextStep}>
+                Next Step
+              </Button>
+            </div>
+          </div>
+        );
+      
+      case 2:
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold">Vehicle Photos & Features</h3>
+            
+            <div className="space-y-4">
+              <label className="text-sm font-medium">Photos</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {formData.images.map((img, index) => (
+                  <div key={index} className="relative aspect-square bg-gray-100 rounded-md overflow-hidden">
+                    <img 
+                      src={img} 
+                      alt={`Car photo ${index + 1}`} 
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index)}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                
+                <button
+                  type="button"
+                  onClick={handleAddImage}
+                  className="flex flex-col items-center justify-center aspect-square bg-gray-100 border-2 border-dashed border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  <Upload className="h-8 w-8 text-gray-400 mb-1" />
+                  <span className="text-sm text-gray-500">Add Photo</span>
+                </button>
+              </div>
+              <p className="text-xs text-gray-500">Upload up to 10 photos. First photo will be used as the main image.</p>
+            </div>
+            
+            <div className="space-y-4">
+              <label className="text-sm font-medium">Features</label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {features.map((feature) => (
+                  <div 
+                    key={feature}
+                    onClick={() => handleFeatureToggle(feature)}
+                    className={`px-3 py-2 rounded-md cursor-pointer border text-sm ${
+                      formData.features.includes(feature) 
+                        ? 'bg-primary/10 border-primary text-primary' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      {formData.features.includes(feature) && (
+                        <svg className="h-4 w-4 mr-1.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                      {feature}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500">Select all features that apply to your vehicle.</p>
+            </div>
+            
+            <div className="pt-4 flex justify-between">
+              <Button variant="outline" onClick={prevStep}>
+                Previous Step
+              </Button>
+              <Button onClick={nextStep}>
+                Next Step
+              </Button>
+            </div>
+          </div>
+        );
+        
+      case 3:
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold">Contact Information</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Your Name*</label>
+                <Input
+                  name="contactName"
+                  value={formData.contactName}
+                  onChange={handleChange}
+                  placeholder="Full name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Phone Number*</label>
+                <Input
+                  name="contactPhone"
+                  value={formData.contactPhone}
+                  onChange={handleChange}
+                  placeholder="e.g. (123) 456-7890"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Email Address*</label>
+                <Input
+                  name="contactEmail"
+                  value={formData.contactEmail}
+                  onChange={handleChange}
+                  type="email"
+                  placeholder="e.g. your.email@example.com"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Location*</label>
+                <Input
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  placeholder="e.g. San Francisco, CA"
+                />
+              </div>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+              <div className="flex">
+                <Info className="h-5 w-5 text-blue-500 mr-3 flex-shrink-0" />
+                <div>
+                  <h4 className="text-sm font-medium text-blue-800 mb-1">Privacy Note</h4>
+                  <p className="text-sm text-blue-700">
+                    Your contact information will be visible to potential buyers. We recommend using a phone number you're comfortable sharing.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="pt-4 flex justify-between">
+              <Button variant="outline" onClick={prevStep}>
+                Previous Step
+              </Button>
+              <Button onClick={handleSubmit}>
+                Submit Listing
+              </Button>
+            </div>
+          </div>
+        );
+        
+      case 4:
+        return (
+          <div className="text-center py-8">
+            <div className="bg-green-100 text-green-800 rounded-full mx-auto w-16 h-16 flex items-center justify-center mb-6">
+              <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold mb-2">Listing Submitted!</h3>
+            <p className="text-gray-600 mb-6 max-w-lg mx-auto">
+              Your vehicle listing has been submitted successfully. Our team will review it shortly, and it will be live on our marketplace soon.
+            </p>
+            <div className="space-y-3">
+              <Link to="/profile">
+                <Button className="w-full sm:w-auto">
+                  View My Listings
+                </Button>
+              </Link>
+              <div className="block sm:inline-block sm:ml-3">
+                <Link to="/cars/buy">
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    Browse Cars
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        );
+        
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <>
+      <Helmet>
+        <title>Sell Your Car | WheelsTrust</title>
+      </Helmet>
+      
+      <Navbar />
+      
+      <main className="pt-24 pb-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                <div>
+                  <h1 className="text-3xl font-bold mb-2">Sell Your Car</h1>
+                  <p className="text-gray-600">List your vehicle on WheelsTrust and reach thousands of potential buyers.</p>
+                </div>
+                
+                <TabsList className="grid w-full sm:w-auto grid-cols-2 sm:grid-cols-1">
+                  <TabsTrigger value="sell-form">Sell Your Car</TabsTrigger>
+                  <TabsTrigger value="selling-tips">Selling Tips</TabsTrigger>
+                </TabsList>
+              </div>
+              
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <TabsContent value="sell-form" className="p-0">
+                  {currentStep < 4 && (
+                    <div className="bg-gray-50 border-b px-6 py-4">
+                      <div className="flex items-center">
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full mr-2 ${currentStep >= 1 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>
+                          1
+                        </div>
+                        <div className="h-1 w-full bg-gray-200">
+                          <div className={`h-1 ${currentStep >= 2 ? 'bg-primary' : 'bg-gray-200'}`} style={{ width: '100%' }}></div>
+                        </div>
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full mx-2 ${currentStep >= 2 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>
+                          2
+                        </div>
+                        <div className="h-1 w-full bg-gray-200">
+                          <div className={`h-1 ${currentStep >= 3 ? 'bg-primary' : 'bg-gray-200'}`} style={{ width: '100%' }}></div>
+                        </div>
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full ml-2 ${currentStep >= 3 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>
+                          3
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-xs mt-1">
+                        <span>Vehicle Details</span>
+                        <span>Photos & Features</span>
+                        <span>Contact Info</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="p-6">
+                    <form>
+                      {renderStep()}
+                    </form>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="selling-tips" className="p-6 space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Tips to Sell Your Car Quickly</h3>
+                    
+                    <ul className="space-y-4">
+                      <li className="flex">
+                        <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">1</span>
+                        <div>
+                          <h4 className="font-medium mb-1">Take Quality Photos</h4>
+                          <p className="text-gray-600 text-sm">
+                            Clean your car thoroughly and take clear photos in good lighting from multiple angles, including the interior, exterior, and under the hood.
+                          </p>
+                        </div>
+                      </li>
+                      
+                      <li className="flex">
+                        <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">2</span>
+                        <div>
+                          <h4 className="font-medium mb-1">Set a Competitive Price</h4>
+                          <p className="text-gray-600 text-sm">
+                            Research similar vehicles in your area to determine a fair market value. Pricing your car competitively will attract more interest.
+                          </p>
+                        </div>
+                      </li>
+                      
+                      <li className="flex">
+                        <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">3</span>
+                        <div>
+                          <h4 className="font-medium mb-1">Provide Detailed Information</h4>
+                          <p className="text-gray-600 text-sm">
+                            Include maintenance history, recent repairs, and all features. Being transparent builds trust with potential buyers.
+                          </p>
+                        </div>
+                      </li>
+                      
+                      <li className="flex">
+                        <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">4</span>
+                        <div>
+                          <h4 className="font-medium mb-1">Respond Quickly</h4>
+                          <p className="text-gray-600 text-sm">
+                            Reply promptly to inquiries and be available for questions and test drives. Quick response times increase your chances of selling.
+                          </p>
+                        </div>
+                      </li>
+                      
+                      <li className="flex">
+                        <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">5</span>
+                        <div>
+                          <h4 className="font-medium mb-1">Have Documentation Ready</h4>
+                          <p className="text-gray-600 text-sm">
+                            Prepare all necessary paperwork including title, service records, and bill of sale to make the transaction smooth.
+                          </p>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-gray-50 border rounded-md p-4">
+                    <h4 className="font-medium mb-2">Need help selling your car?</h4>
+                    <p className="text-gray-600 text-sm mb-3">
+                      Our team of experts can help you sell your car faster. From professional photography to handling inquiries on your behalf.
+                    </p>
+                    <Button variant="outline">
+                      Learn About Concierge Service
+                    </Button>
+                  </div>
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
+        </div>
+      </main>
+      
+      <Footer />
+    </>
+  );
+};
+
+export default CarsSell;
