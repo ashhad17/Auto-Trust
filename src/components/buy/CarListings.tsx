@@ -112,7 +112,7 @@ const CarListings = () => {
       });
       return;
     }
-    navigate(`/cars/details/${carId}`);
+    navigate(`/buy/cars/${carId}`);
   };
 
   if (isLoading) {

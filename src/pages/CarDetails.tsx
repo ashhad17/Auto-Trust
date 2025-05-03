@@ -1,52 +1,95 @@
-import React, { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
+import axios from "axios";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import { cars } from "@/lib/data";
 import { Car, Calendar, MapPin, Info, MessageSquare } from "lucide-react";
 import Modal from "@/components/ui/modal";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
+
+interface CarData {
+  _id: string;
+  make: string;
+  model: string;
+  year: number;
+  price: number;
+  mileage: number;
+  condition: string;
+  status: string;
+  images: string[];
+  description: string;
+  features: string[];
+  seller: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  location: string;
+  fuelType: string;
+  transmission: string;
+  color: string;
+  createdAt: string;
+}
 
 const CarDetails = () => {
+  // Hooks at the top level
   const { id } = useParams();
+  const navigate = useNavigate();
   const { isAuthenticated, openAuthModal } = useAuth();
+  const { toast } = useToast();
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [message, setMessage] = useState("");
-  
-  // Find the car with the matching ID - convert string id to number for comparison
-  const car = cars.find(c => c.id === parseInt(id as string));
-  
-  if (!car) {
-    return (
-      <>
-        <Navbar />
-        <div className="container mx-auto px-4 pt-32 pb-16 text-center">
-          <h1 className="text-3xl font-bold mb-4">Car Not Found</h1>
-          <p className="mb-6">The car you're looking for doesn't exist or has been removed.</p>
-          <Link to="/cars/buy">
-            <Button>Browse All Cars</Button>
-          </Link>
-        </div>
-        <Footer />
-      </>
-    );
-  }
-  
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
-  
-  const formatMileage = (mileage: number) => {
-    return new Intl.NumberFormat("en-US").format(mileage);
-  };
+  const [car, setCar] = useState<CarData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeImage, setActiveImage] = useState<string>("");
+
+  // Fetch car details
+  useEffect(() => {
+    const fetchCarDetails = async () => {
+      if (!id) {
+        setError("Car ID is required");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await axios.get<{ success: boolean; data: CarData }>(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/cars/${id}`
+        );
+
+        if (response.data.success) {
+          setCar(response.data.data);
+          setActiveImage(response.data.data.images[0] || "");
+        } else {
+          setError("Failed to fetch car details");
+          toast({
+            title: "Error",
+            description: "Failed to fetch car details",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching car details:", error);
+        setError("Failed to fetch car details");
+        toast({
+          title: "Error",
+          description: "Failed to fetch car details. Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCarDetails();
+  }, [id, toast]);
 
   const handleContactClick = () => {
     if (!isAuthenticated) {
@@ -62,20 +105,53 @@ const CarDetails = () => {
     setMessage("");
     setIsContactModalOpen(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error || !car) {
+    return (
+      <>
+        <Navbar />
+        <div className="container mx-auto px-4 pt-32 pb-16 text-center">
+          <h1 className="text-3xl font-bold mb-4">Car Not Found</h1>
+          <p className="mb-6">The car you're looking for doesn't exist or has been removed.</p>
+          <Link to="/cars/buy">
+            <Button>Browse All Cars</Button>
+          </Link>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
   
-  const carImages = [
-    car.image,
+  const formatMileage = (mileage: number) => {
+    return new Intl.NumberFormat("en-US").format(mileage);
+  };
+
+  const carImages = car.images.length > 0 ? car.images : [
     "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=800&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop",
   ];
-  
-  const [activeImage, setActiveImage] = useState(carImages[0]);
 
   return (
     <>
       <Helmet>
-        <title>{car.title || `${car.year} ${car.make} ${car.model}`} | WheelsTrust</title>
+        <title>{`${car.year} ${car.make} ${car.model}`} | WheelsTrust</title>
       </Helmet>
       
       <Navbar />
@@ -99,7 +175,7 @@ const CarDetails = () => {
             
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <h1 className="text-3xl font-bold">
-                {car.title || `${car.year} ${car.make} ${car.model}`}
+                {`${car.year} ${car.make} ${car.model}`}
               </h1>
               <div className="text-xl md:text-2xl font-semibold text-primary">
                 {formatPrice(car.price)}
@@ -113,7 +189,7 @@ const CarDetails = () => {
                 <div className="relative h-64 md:h-96 overflow-hidden">
                   <img 
                     src={activeImage} 
-                    alt={car.title || `${car.year} ${car.make} ${car.model}`}
+                    alt={`${car.year} ${car.make} ${car.model}`}
                     className="w-full h-full object-cover"
                   />
                   
@@ -166,9 +242,7 @@ const CarDetails = () => {
                     <div>
                       <h3 className="text-lg font-medium mb-3">Description</h3>
                       <p className="text-gray-700">
-                        This {car.year} {car.make} {car.model} is in {car.condition?.toLowerCase() || 'good'} condition with {formatMileage(car.mileage)} miles.
-                        It features a {car.transmission} transmission and {car.fuelType} engine.
-                        The car has been well maintained and is ready for its next owner.
+                        {car.description}
                       </p>
                     </div>
                     
@@ -202,16 +276,16 @@ const CarDetails = () => {
                           </div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded">
-                          <div className="text-xs text-gray-500">Body Type</div>
-                          <div className="font-medium">Sedan</div>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded">
                           <div className="text-xs text-gray-500">Exterior Color</div>
-                          <div className="font-medium">Blue</div>
+                          <div className="font-medium">{car.color}</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded">
-                          <div className="text-xs text-gray-500">Interior Color</div>
-                          <div className="font-medium">Black</div>
+                          <div className="text-xs text-gray-500">Condition</div>
+                          <div className="font-medium">{car.condition}</div>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded">
+                          <div className="text-xs text-gray-500">Status</div>
+                          <div className="font-medium">{car.status}</div>
                         </div>
                       </div>
                     </div>
@@ -222,54 +296,14 @@ const CarDetails = () => {
                       <h3 className="text-lg font-medium mb-3">Vehicle Features</h3>
                       
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="flex items-center">
-                          <svg className="h-4 w-4 text-primary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          <span>Bluetooth</span>
-                        </div>
-                        <div className="flex items-center">
-                          <svg className="h-4 w-4 text-primary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          <span>Backup Camera</span>
-                        </div>
-                        <div className="flex items-center">
-                          <svg className="h-4 w-4 text-primary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          <span>Navigation System</span>
-                        </div>
-                        <div className="flex items-center">
-                          <svg className="h-4 w-4 text-primary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          <span>Heated Seats</span>
-                        </div>
-                        <div className="flex items-center">
-                          <svg className="h-4 w-4 text-primary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          <span>Sunroof</span>
-                        </div>
-                        <div className="flex items-center">
-                          <svg className="h-4 w-4 text-primary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          <span>Lane Departure Warning</span>
-                        </div>
-                        <div className="flex items-center">
-                          <svg className="h-4 w-4 text-primary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          <span>Apple CarPlay</span>
-                        </div>
-                        <div className="flex items-center">
-                          <svg className="h-4 w-4 text-primary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          <span>Android Auto</span>
-                        </div>
+                        {car.features.map((feature, index) => (
+                          <div key={index} className="flex items-center">
+                            <svg className="h-4 w-4 text-primary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span>{feature}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </TabsContent>
@@ -306,22 +340,13 @@ const CarDetails = () => {
                             <h4 className="font-medium">Owner History</h4>
                           </div>
                           <div className="p-4">
-                            <div className="flex items-center mb-4">
-                              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white mr-3">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 mr-3">
                                 1
                               </div>
                               <div>
-                                <div className="font-medium">First Owner</div>
-                                <div className="text-sm text-gray-600">2018-2021 • Personal Use</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center">
-                              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 mr-3">
-                                2
-                              </div>
-                              <div>
                                 <div className="font-medium">Current Seller</div>
-                                <div className="text-sm text-gray-600">2021-Present • Personal Use</div>
+                                <div className="text-sm text-gray-600">Listed on {new Date(car.createdAt).toLocaleDateString()}</div>
                               </div>
                             </div>
                           </div>
@@ -346,9 +371,9 @@ const CarDetails = () => {
                     />
                   </div>
                   <div>
-                    <div className="font-medium">John Smith</div>
+                    <div className="font-medium">{car.seller.name}</div>
                     <div className="text-sm text-gray-600">
-                      {car.sellerType === 'dealer' ? 'Dealer' : 'Private Seller'}
+                      {car.seller.email}
                     </div>
                   </div>
                 </div>
@@ -360,12 +385,9 @@ const CarDetails = () => {
                   </div>
                   <div className="flex items-center text-sm">
                     <Calendar className="h-4 w-4 text-gray-500 mr-2" />
-                    <span>Listed 2 weeks ago</span>
+                    <span>Listed {new Date(car.createdAt).toLocaleDateString()}</span>
                   </div>
-                  <div className="flex items-center text-sm">
-                    <Info className="h-4 w-4 text-gray-500 mr-2" />
-                    <span>ID: {car.id}</span>
-                  </div>
+                  
                 </div>
                 
                 <div className="space-y-3">
@@ -436,7 +458,7 @@ const CarDetails = () => {
               />
             </div>
             <div>
-              <div className="font-medium">John Smith</div>
+              <div className="font-medium">{car.seller.name}</div>
               <div className="text-xs text-gray-600">Usually responds within 1 day</div>
             </div>
           </div>

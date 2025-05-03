@@ -141,10 +141,77 @@ exports.getBooking = async (req, res, next) => {
 // @access  Private
 exports.createBooking = async (req, res, next) => {
   try {
+    console.log('=== Booking Creation Debug ===');
+    console.log('1. Received booking request:', JSON.stringify(req.body, null, 2));
+    console.log('2. User from request:', JSON.stringify(req.user, null, 2));
+
     // Add user to req.body
     req.body.user = req.user.id;
+    console.log('3. Updated booking request with user:', JSON.stringify(req.body, null, 2));
 
+    // Validate required fields
+    const requiredFields = ['serviceProvider', 'services', 'date', 'time', 'totalPrice'];
+    console.log('4. Checking required fields:', requiredFields);
+    
+    for (const field of requiredFields) {
+      console.log(`5. Checking field ${field}:`, req.body[field]);
+      if (!req.body[field]) {
+        console.log(`6. Missing required field: ${field}`);
+        return res.status(400).json({
+          success: false,
+          message: `Missing required field: ${field}`,
+          receivedData: req.body
+        });
+      }
+    }
+
+    // Validate services array
+    console.log('7. Validating services array:', req.body.services);
+    if (!Array.isArray(req.body.services) || req.body.services.length === 0) {
+      console.log('8. Invalid services array:', req.body.services);
+      return res.status(400).json({
+        success: false,
+        message: 'At least one service is required',
+        receivedData: req.body
+      });
+    }
+
+    // Validate each service
+    console.log('9. Validating individual services');
+    for (const service of req.body.services) {
+      console.log('10. Validating service:', service);
+      if (!service.name || !service.price || !service.duration) {
+        console.log('11. Invalid service:', service);
+        return res.status(400).json({
+          success: false,
+          message: 'Each service must have name, price, and duration',
+          receivedData: req.body
+        });
+      }
+    }
+
+    // Check if the time slot is already booked
+    console.log('12. Checking for existing bookings');
+    const existingBooking = await Booking.findOne({
+      serviceProvider: req.body.serviceProvider,
+      date: new Date(req.body.date),
+      time: req.body.time,
+      status: { $in: ['pending', 'confirmed'] }
+    });
+
+    if (existingBooking) {
+      console.log('13. Time slot already booked:', existingBooking);
+      return res.status(400).json({
+        success: false,
+        message: 'This time slot is already booked',
+        receivedData: req.body
+      });
+    }
+
+    // Create the booking
+    console.log('14. Creating booking with data:', JSON.stringify(req.body, null, 2));
     const booking = await Booking.create(req.body);
+    console.log('15. Booking created successfully:', JSON.stringify(booking, null, 2));
 
     res.status(201).json({
       success: true,
@@ -152,6 +219,16 @@ exports.createBooking = async (req, res, next) => {
       data: booking
     });
   } catch (err) {
+    console.error('16. Booking creation error:', err);
+    if (err.name === 'ValidationError') {
+      console.error('17. Validation error details:', err.errors);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: Object.values(err.errors).map(e => e.message),
+        receivedData: req.body
+      });
+    }
     next(err);
   }
 };
@@ -312,6 +389,47 @@ exports.getProviderBookings = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: bookings
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Check availability for a service provider
+// @route   GET /api/v1/bookings/check-availability/:id
+// @access  Private
+exports.checkAvailability = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { date } = req.query;
+
+    // Get all bookings for the service provider on the given date
+    const bookings = await Booking.find({
+      serviceProvider: id,
+      date: new Date(date),
+      status: { $in: ['pending', 'confirmed'] }
+    }).select('time status');
+
+    // Get all available time slots
+    const availableTimeSlots = [
+      "09:00 AM", "10:00 AM", "11:00 AM", 
+      "12:00 PM", "01:00 PM", "02:00 PM", 
+      "03:00 PM", "04:00 PM"
+    ];
+
+    // Create response with availability status for each time slot
+    const availability = availableTimeSlots.map(time => {
+      const isBooked = bookings.some(booking => booking.time === time);
+      return {
+        time,
+        isBooked,
+        status: isBooked ? 'booked' : 'available'
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: availability
     });
   } catch (err) {
     next(err);

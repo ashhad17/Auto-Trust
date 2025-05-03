@@ -1,163 +1,151 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
-import { Search } from "lucide-react";
-import { ServiceType } from "@/lib/data";
+import { Button } from "@/components/ui/button";
+import { Search, Filter } from "lucide-react";
+
+interface ServiceProvider {
+  _id: string;
+  name: string;
+  description: string;
+  image: string;
+  rating: number;
+  reviewCount: number;
+  services: any[];
+  status: string;
+  verified: boolean;
+  specialties: string[];
+  location: {
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+}
 
 interface ServiceFiltersProps {
-  services: ServiceType[];
-  onFilterChange: (filteredServices: ServiceType[]) => void;
+  services: ServiceProvider[];
+  onFilterChange: (filteredServices: ServiceProvider[]) => void;
 }
 
 const ServiceFilters: React.FC<ServiceFiltersProps> = ({ services, onFilterChange }) => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [priceRange, setPriceRange] = useState<number[]>([0, 1000]);
-  const [ratingRange, setRatingRange] = useState<number[]>([0, 5]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedLocation, setSelectedLocation] = useState<string>("all");
-  const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [location, setLocation] = useState("");
+  const [rating, setRating] = useState("");
+  const [specialty, setSpecialty] = useState("");
 
-  // Get unique values for filters
-  const categories = Array.from(new Set(services.map(service => service.category)));
-  const locations = Array.from(new Set(services.map(service => service.provider.location)));
+  useEffect(() => {
+    filterServices();
+  }, [searchTerm, location, rating, specialty, services]);
 
-  const applyFilters = () => {
-    const filteredServices = services.filter(service => {
-      const matchesSearch = 
-        service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.provider.name.toLowerCase().includes(searchQuery.toLowerCase());
+  const filterServices = () => {
+    let filtered = [...services];
 
-      const matchesPrice = 
-        parseFloat(service.price.replace(/[^0-9.-]+/g, "")) >= priceRange[0] &&
-        parseFloat(service.price.replace(/[^0-9.-]+/g, "")) <= priceRange[1];
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (provider) =>
+          provider.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          provider.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
 
-      const matchesRating = 
-        service.rating >= ratingRange[0] && service.rating <= ratingRange[1];
+    if (location) {
+      filtered = filtered.filter(
+        (provider) =>
+          provider.location.city.toLowerCase().includes(location.toLowerCase()) ||
+          provider.location.state.toLowerCase().includes(location.toLowerCase())
+      );
+    }
 
-      const matchesCategory = 
-        selectedCategory === "all" || service.category === selectedCategory;
+    if (rating && rating !== "any") {
+      const minRating = parseFloat(rating);
+      filtered = filtered.filter((provider) => provider.rating >= minRating);
+    }
 
-      const matchesLocation = 
-        selectedLocation === "all" || service.provider.location === selectedLocation;
+    if (specialty && specialty !== "all") {
+      filtered = filtered.filter((provider) =>
+        provider.specialties.some((s) =>
+          s.toLowerCase().includes(specialty.toLowerCase())
+        )
+      );
+    }
 
-      const matchesVerification = 
-        !verifiedOnly || service.provider.verified;
-
-      return matchesSearch && matchesPrice && matchesRating && matchesCategory && 
-             matchesLocation && matchesVerification;
-    });
-
-    onFilterChange(filteredServices);
+    onFilterChange(filtered);
   };
 
-  const resetFilters = () => {
-    setSearchQuery("");
-    setPriceRange([0, 1000]);
-    setRatingRange([0, 5]);
-    setSelectedCategory("all");
-    setSelectedLocation("all");
-    setVerifiedOnly(false);
-    onFilterChange(services);
+  const clearFilters = () => {
+    setSearchTerm("");
+    setLocation("");
+    setRating("any");
+    setSpecialty("all");
   };
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 h-4 w-4" />
-          <Input
-            placeholder="Search services..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        {/* Category Filter */}
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map(category => (
-              <SelectItem key={category} value={category}>
-                {category.charAt(0).toUpperCase() + category.slice(1)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Price Range */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Price Range</label>
-          <Slider
-            value={priceRange}
-            onValueChange={setPriceRange}
-            min={0}
-            max={1000}
-            step={10}
-          />
-          <div className="flex justify-between text-sm text-gray-500">
-            <span>${priceRange[0]}</span>
-            <span>${priceRange[1]}</span>
+    <div className="mb-8 space-y-4">
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search service providers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
         </div>
-
-        {/* Rating Range */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Rating Range</label>
-          <Slider
-            value={ratingRange}
-            onValueChange={setRatingRange}
-            min={0}
-            max={5}
-            step={0.5}
-          />
-          <div className="flex justify-between text-sm text-gray-500">
-            <span>{ratingRange[0]} stars</span>
-            <span>{ratingRange[1]} stars</span>
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Location (city or state)"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="pl-10"
+            />
           </div>
-        </div>
-
-        {/* Location Filter */}
-        <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select Location" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Locations</SelectItem>
-            {locations.map(location => (
-              <SelectItem key={location} value={location}>{location}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Verified Only Toggle */}
-        <div className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            id="verifiedOnly"
-            checked={verifiedOnly}
-            onChange={(e) => setVerifiedOnly(e.target.checked)}
-            className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-          />
-          <label htmlFor="verifiedOnly" className="text-sm font-medium">
-            Verified Providers Only
-          </label>
         </div>
       </div>
 
-      <div className="flex justify-end gap-4 mt-6">
-        <Button variant="outline" onClick={resetFilters}>
-          Reset Filters
-        </Button>
-        <Button onClick={applyFilters}>
-          Apply Filters
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1">
+          <Select value={rating} onValueChange={setRating}>
+            <SelectTrigger>
+              <SelectValue placeholder="Minimum Rating" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="any">Any Rating</SelectItem>
+              <SelectItem value="4.5">4.5+ Stars</SelectItem>
+              <SelectItem value="4">4+ Stars</SelectItem>
+              <SelectItem value="3">3+ Stars</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1">
+          <Select value={specialty} onValueChange={setSpecialty}>
+            <SelectTrigger>
+              <SelectValue placeholder="Specialty" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Specialties</SelectItem>
+              <SelectItem value="European Cars">European Cars</SelectItem>
+              <SelectItem value="Electrical Systems">Electrical Systems</SelectItem>
+              <SelectItem value="Diagnostics">Diagnostics</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          onClick={clearFilters}
+          className="flex items-center gap-2"
+        >
+          <Filter className="h-4 w-4" />
+          Clear Filters
         </Button>
       </div>
     </div>

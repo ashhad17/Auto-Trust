@@ -8,7 +8,7 @@ const morgan = require('morgan');
 const path = require('path');
 const errorHandler = require('./middleware/error');
 const logger = require('./config/logger');
-const { swaggerUi, swaggerDocument, options } = require('./config/swagger');
+// const { swaggerUi, swaggerDocument, options } = require('./config/swagger');
 
 // Route files
 const auth = require('./routes/auth');
@@ -55,8 +55,8 @@ app.use(limiter);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Swagger UI
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', swaggerUi.setup(swaggerDocument, options));
+// app.use('/api-docs', swaggerUi.serve);
+// app.get('/api-docs', swaggerUi.setup(swaggerDocument, options));
 
 // Mount routers
 app.use('/api/v1/auth', auth);

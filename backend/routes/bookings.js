@@ -8,7 +8,8 @@ const {
   updateBooking,
   deleteBooking,
   updateBookingStatus,
-  getProviderBookings
+  getProviderBookings,
+  checkAvailability
 } = require('../controllers/bookingController');
 const { validateBooking, validateBookingStatus, handleValidationErrors } = require('../middleware/validate');
 
@@ -20,7 +21,7 @@ router.get('/', protect, getBookings);
 // @route   GET /api/v1/bookings/provider
 // @desc    Get bookings for a service provider
 // @access  Private
-router.get('/provider', protect, authorize('service_provider'), getProviderBookings);
+router.get('/provider', protect, authorize('service_provider','admin'), getProviderBookings);
 
 // @route   GET /api/v1/bookings/:id
 // @desc    Get single booking
@@ -45,6 +46,11 @@ router.delete('/:id', protect, deleteBooking);
 // @route   PATCH /api/v1/bookings/:id/status
 // @desc    Update booking status
 // @access  Private
-router.patch('/:id/status', protect, validateBookingStatus, handleValidationErrors, updateBookingStatus);
+// router.patch('/:id/status', protect, validateBookingStatus, handleValidationErrors, updateBookingStatus);
+
+// @route   GET /api/v1/bookings/check-availability/:id
+// @desc    Check availability for a service provider
+// @access  Private
+router.get('/check-availability/:id', protect, checkAvailability);
 
 module.exports = router; 

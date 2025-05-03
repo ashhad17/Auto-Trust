@@ -6,10 +6,20 @@ const bookingSchema = new mongoose.Schema({
     ref: 'ServiceProvider',
     required: true
   },
-  service: {
-    name: String,
-    price: Number
-  },
+  services: [{
+    name: {
+      type: String,
+      required: true
+    },
+    price: {
+      type: Number,
+      required: true
+    },
+    duration: {
+      type: String,
+      required: true
+    }
+  }],
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -28,6 +38,10 @@ const bookingSchema = new mongoose.Schema({
     enum: ['pending', 'confirmed', 'completed', 'cancelled'],
     default: 'pending'
   },
+  totalPrice: {
+    type: Number,
+    required: true
+  },
   notes: String,
   createdAt: {
     type: Date,
@@ -44,5 +58,8 @@ bookingSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   next();
 });
+
+// Add index for availability check
+bookingSchema.index({ serviceProvider: 1, date: 1, time: 1, status: 1 });
 
 module.exports = mongoose.model('Booking', bookingSchema); 
