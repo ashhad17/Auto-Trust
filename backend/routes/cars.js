@@ -25,7 +25,7 @@ router.get('/:id', getCar);
 // @route   POST /api/v1/cars
 // @desc    Create new car
 // @access  Private
-router.post('/', protect, authorize('user', 'admin'), upload.array('images', 5), validateCar, handleValidationErrors, createCar);
+router.post('/', protect, authorize('user', 'admin','service_provider'), upload.array('images', 5), validateCar, handleValidationErrors, createCar);
 
 // @route   PUT /api/v1/cars/:id
 // @desc    Update car

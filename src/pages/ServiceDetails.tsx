@@ -26,7 +26,7 @@ interface Service {
   name: string;
   description: string;
   price: number;
-  duration: string;
+  duration: number;
 }
 
 interface ServiceProvider {
@@ -80,6 +80,7 @@ const ServiceDetails = () => {
         );
         
         if (response.data.success) {
+          console.log("Fetched provider details:", response.data.data);
           setProvider(response.data.data);
           // Fetch booked time slots for today
           try {
@@ -120,7 +121,14 @@ const ServiceDetails = () => {
 
     fetchProviderDetails();
   }, [id, toast]);
-
+  const formatDuration = (minutes: number): string => {
+    if (minutes < 60) {
+      return `${minutes} min`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours} hr${remainingMinutes ? ` ${remainingMinutes} min` : ''}`;
+  };
   // Function to fetch availability for a specific date
   const fetchAvailability = async (date: string) => {
     try {
@@ -296,7 +304,28 @@ const ServiceDetails = () => {
     setIsMessageModalOpen(false);
     setMessage("");
   };
-
+  const calculateEndTime = (startTime: string, duration: number): string => {
+    // Parse the start time
+    const [time, period] = startTime.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    
+    // Convert to 24-hour format
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    
+    // Add duration
+    const startDate = new Date();
+    startDate.setHours(hours, minutes, 0, 0);
+    const endDate = new Date(startDate.getTime() + duration * 60000);
+    
+    // Convert back to 12-hour format
+    let endHours = endDate.getHours();
+    const endPeriod = endHours >= 12 ? 'PM' : 'AM';
+    endHours = endHours % 12;
+    endHours = endHours || 12; // Convert 0 to 12
+    
+    return `${endHours}:${String(endDate.getMinutes()).padStart(2, '0')} ${endPeriod}`;
+  };
   // Available time slots
   const availableTimeSlots = [
     "09:00 AM", "10:00 AM", "11:00 AM", 
@@ -500,36 +529,36 @@ const ServiceDetails = () => {
               <div className="sticky top-24">
                 <h2 className="text-xl font-semibold mb-4">Available Services</h2>
                 <div className="space-y-4">
-                  {provider.services.map((service) => (
-                    <div 
-                      key={service._id}
-                      className={`bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all ${
-                        selectedServices.some(s => s._id === service._id) 
-                          ? 'ring-2 ring-primary' 
-                          : 'hover:shadow-lg'
-                      }`}
-                      onClick={() => handleServiceSelect(service)}
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-lg font-semibold">{service.name}</h3>
-                          <p className="text-gray-600 text-sm">{service.description}</p>
-                        </div>
-                        {selectedServices.some(s => s._id === service._id) && (
-                          <Check className="h-5 w-5 text-primary" />
-                        )}
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div className="text-2xl font-bold text-primary">
-                          ${service.price.toFixed(2)}
-                        </div>
-                        <div className="text-gray-600 flex items-center">
-                          <Clock className="h-4 w-4 mr-1" />
-                          {service.duration}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                {provider.services.map((service) => (
+  <div 
+    key={service._id}
+    className={`bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all ${
+      selectedServices.some(s => s._id === service._id) 
+        ? 'ring-2 ring-primary' 
+        : 'hover:shadow-lg'
+    }`}
+    onClick={() => handleServiceSelect(service)}
+  >
+    <div className="flex justify-between items-start mb-4">
+      <div>
+        <h3 className="text-lg font-semibold">{service.name}</h3>
+        <p className="text-gray-600 text-sm">{service.description}</p>
+      </div>
+      {selectedServices.some(s => s._id === service._id) && (
+        <Check className="h-5 w-5 text-primary" />
+      )}
+    </div>
+    <div className="flex justify-between items-center">
+      <div className="text-2xl font-bold text-primary">
+        ${service.price.toFixed(2)}
+      </div>
+      <div className="text-gray-600 flex items-center">
+        <Clock className="h-4 w-4 mr-1" />
+        {formatDuration(service.duration)}
+      </div>
+    </div>
+  </div>
+))}
                 </div>
 
                 {/* Booking Summary */}

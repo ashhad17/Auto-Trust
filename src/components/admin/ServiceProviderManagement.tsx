@@ -78,7 +78,6 @@ const ServiceProviderManagement = () => {
       if (!token) {
         throw new Error('No auth token found');
       }
-
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/service-providers`,
         {

@@ -203,9 +203,7 @@ exports.validateBooking = [
     .isFloat({ min: 0 })
     .withMessage('Service price must be a positive number'),
   
-  body('services.*.duration')
-    .notEmpty()
-    .withMessage('Service duration is required'),
+  
   
   body('date')
     .notEmpty()

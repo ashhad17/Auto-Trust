@@ -1,776 +1,605 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Search, Plus, Edit, Trash, CheckCircle, XCircle, Clock, FileText } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Edit, Eye, Plus, Trash, Car } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import axios from "axios";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface CarListing {
-  _id: string;
+  id: string;
+  title: string;
+  year: string;
   make: string;
   model: string;
-  year: number;
-  price: number;
-  mileage: number;
-  condition: "new" | "used" | "certified";
+  price: string;
+  mileage: string;
+  description: string;
+  condition: "Excellent" | "Good" | "Fair" | "Poor";
+  location: string;
   status: "active" | "sold" | "pending" | "draft";
   images: string[];
-  description: string;
-  features: string[];
-  seller: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-  createdAt: string;
 }
 
-const carListingFormSchema = z.object({
-  make: z.string().min(1, "Make is required"),
-  model: z.string().min(1, "Model is required"),
-  year: z.number().min(1900, "Year must be at least 1900").max(new Date().getFullYear() + 1, "Year cannot be in the future"),
-  price: z.number().min(0, "Price must be positive"),
-  mileage: z.number().min(0, "Mileage must be positive"),
-  condition: z.enum(["new", "used", "certified"]),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  features: z.array(z.string()).min(1, "At least one feature is required"),
-});
+const CarListingManagement: React.FC = () => {
+  const [listings, setListings] = useState<CarListing[]>([
+    {
+      id: "1",
+      title: "2018 Toyota Camry XSE",
+      year: "2018",
+      make: "Toyota",
+      model: "Camry XSE",
+      price: "19500",
+      mileage: "45000",
+      description: "Well maintained Toyota Camry with low mileage. Features include leather seats, sunroof, and premium sound system.",
+      condition: "Excellent",
+      location: "San Francisco, CA",
+      status: "active",
+      images: ["https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=300&h=200"]
+    },
+    {
+      id: "2",
+      title: "2020 Honda Accord Sport",
+      year: "2020",
+      make: "Honda",
+      model: "Accord Sport",
+      price: "23800",
+      mileage: "28000",
+      description: "One owner Honda Accord in pristine condition. Includes Honda Sensing safety features and Apple CarPlay.",
+      condition: "Excellent",
+      location: "Oakland, CA",
+      status: "active",
+      images: ["https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=300&h=200"]
+    },
+  ]);
 
-const CarListingManagement = () => {
-  const [listings, setListings] = useState<CarListing[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editListing, setEditListing] = useState<CarListing | null>(null);
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof carListingFormSchema>>({
-    resolver: zodResolver(carListingFormSchema),
-    defaultValues: {
+  const statusColors: Record<string, string> = {
+    active: "bg-green-100 text-green-800",
+    sold: "bg-blue-100 text-blue-800",
+    pending: "bg-yellow-100 text-yellow-800",
+    draft: "bg-gray-100 text-gray-800"
+  };
+
+  const handleAddListing = (newListing: Partial<CarListing>) => {
+    const listing: CarListing = {
+      id: Date.now().toString(),
+      title: `${newListing.year} ${newListing.make} ${newListing.model}`,
+      year: newListing.year || "",
+      make: newListing.make || "",
+      model: newListing.model || "",
+      price: newListing.price || "",
+      mileage: newListing.mileage || "",
+      description: newListing.description || "",
+      condition: newListing.condition as "Excellent" | "Good" | "Fair" | "Poor" || "Good",
+      location: newListing.location || "",
+      status: "active",
+      images: newListing.images || []
+    };
+
+    setListings([...listings, listing]);
+    setIsAddDialogOpen(false);
+    
+    toast({
+      title: "Listing Created",
+      description: "Your car listing has been created successfully."
+    });
+  };
+
+  const handleEditListing = (updatedListing: CarListing) => {
+    setListings(listings.map(listing => 
+      listing.id === updatedListing.id ? updatedListing : listing
+    ));
+    setEditListing(null);
+    
+    toast({
+      title: "Listing Updated",
+      description: "Your car listing has been updated successfully."
+    });
+  };
+
+  const handleDeleteListing = (id: string) => {
+    setListings(listings.filter(listing => listing.id !== id));
+    
+    toast({
+      title: "Listing Deleted",
+      description: "The car listing has been deleted successfully."
+    });
+  };
+
+  const handleStatusChange = (id: string, status: CarListing['status']) => {
+    setListings(listings.map(listing => 
+      listing.id === id ? { ...listing, status } : listing
+    ));
+    
+    toast({
+      title: "Status Updated",
+      description: `Listing status has been changed to ${status}.`
+    });
+  };
+
+  // Form component for add/edit
+  const ListingForm = ({ initialData, onSave, onCancel }: { 
+    initialData?: Partial<CarListing>, 
+    onSave: (data: Partial<CarListing>) => void,
+    onCancel: () => void
+  }) => {
+    const [formData, setFormData] = useState<Partial<CarListing>>(initialData || {
+      year: "",
       make: "",
       model: "",
-      year: new Date().getFullYear(),
-      price: 0,
-      mileage: 0,
-      condition: "used",
+      price: "",
+      mileage: "",
       description: "",
-      features: [],
-    },
-  });
+      condition: "Good",
+      location: "",
+      images: []
+    });
 
-  useEffect(() => {
-    fetchListings();
-  }, []);
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { name, value } = e.target;
+      setFormData({ ...formData, [name]: value });
+    };
 
-  const fetchListings = async () => {
-    setIsLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No auth token found');
-      }
-
-      console.log('Fetching car listings from:', `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/cars`);
-      
-      const response = await axios.get<{ 
-        success: boolean; 
-        data: {
-          cars: CarListing[];
-          pagination: {
-            total: number;
-            pages: number;
-            currentPage: number;
-            limit: number;
-          }
-        }
-      }>(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/cars`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      console.log('API Response:', response.data);
-
-      if (response.data.success && Array.isArray(response.data.data.cars)) {
-        setListings(response.data.data.cars);
-      } else {
-        console.error('Invalid response format:', response.data);
-        setError("Failed to fetch car listings");
-        setListings([]);
-        toast({
-          title: "Error",
-          description: "Failed to fetch car listings",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching car listings:", error);
-      setError("Failed to fetch car listings");
-      setListings([]);
-      toast({
-        title: "Error",
-        description: "Failed to fetch car listings. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAddListing = async (data: z.infer<typeof carListingFormSchema>) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No auth token found');
-      }
-
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/car-listings`,
-        data,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      if (response.data.success) {
-        setListings([...listings, response.data.data]);
-        setIsAddDialogOpen(false);
-        form.reset();
-        toast({
-          title: "Success",
-          description: "Car listing added successfully",
-        });
-      }
-    } catch (error) {
-      console.error("Error adding car listing:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add car listing. Please try again later.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleEditListing = async (data: z.infer<typeof carListingFormSchema>) => {
-    if (!editListing) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No auth token found');
-      }
-
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/cars/${editListing._id}`,
-        data,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      if (response.data.success) {
-        setListings(listings.map(listing => 
-          listing._id === editListing._id ? response.data.data : listing
-        ));
-        setEditListing(null);
-        form.reset();
-        toast({
-          title: "Success",
-          description: "Car listing updated successfully",
-        });
-      }
-    } catch (error) {
-      console.error("Error updating car listing:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update car listing. Please try again later.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteListing = async (id: string) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No auth token found');
-      }
-
-      const response = await axios.delete(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/cars/${id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      if (response.data.success) {
-        setListings(listings.filter(listing => listing._id !== id));
-        toast({
-          title: "Success",
-          description: "Car listing deleted successfully",
-        });
-      }
-    } catch (error) {
-      console.error("Error deleting car listing:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete car listing. Please try again later.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleUpdateListingStatus = async (id: string, status: "active" | "sold" | "pending" | "draft") => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No auth token found');
-      }
-
-      console.log('Updating car status:', { id, status });
-      
-      const response = await axios.patch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/cars/${id}/status`,
-        { 
-          status,
-          id
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      console.log('Status update response:', response.data);
-
-      if (response.data.success) {
-        setListings(prevListings => 
-          prevListings.map(listing => 
-            listing._id === id ? { ...listing, status } : listing
-          )
-        );
-        toast({
-          title: "Success",
-          description: "Car listing status updated successfully",
+    const handleSelectChange = (name: string, value: string) => {
+      if (name === "condition") {
+        setFormData({ 
+          ...formData, 
+          [name]: value as "Excellent" | "Good" | "Fair" | "Poor" 
         });
       } else {
-        console.error('Failed to update status:', response.data);
-        toast({
-          title: "Error",
-          description: response.data.error || "Failed to update car listing status",
-          variant: "destructive",
-        });
+        setFormData({ ...formData, [name]: value });
       }
-    } catch (error) {
-      console.error("Error updating car listing status:", error);
-      if (axios.isAxiosError(error)) {
-        console.error('Error details:', {
-          status: error.response?.status,
-          data: error.response?.data,
-          message: error.message
-        });
-        
-        // Log the full error response
-        if (error.response?.data) {
-          console.error('Server error response:', error.response.data);
-        }
-      }
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update car listing status. Please try again later.",
-        variant: "destructive",
-      });
-    }
-  };
+    };
 
-  const filteredListings = Array.isArray(listings) ? listings.filter(listing => {
-    const searchLower = searchTerm.toLowerCase();
+    const handleImageAdd = () => {
+      // This would normally open a file picker or URL input
+      // For demo purposes, we'll just add a placeholder image URL
+      const images = formData.images || [];
+      setFormData({ 
+        ...formData, 
+        images: [...images, "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=300&h=200"] 
+      });
+      
+      toast({
+        title: "Image Added",
+        description: "Sample image has been added to the listing."
+      });
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!formData.year || !formData.make || !formData.model || !formData.price) {
+        toast({
+          title: "Missing Fields",
+          description: "Please fill in all required fields.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      onSave(formData);
+    };
+
     return (
-      listing.make.toLowerCase().includes(searchLower) ||
-      listing.model.toLowerCase().includes(searchLower) ||
-      listing.seller.name.toLowerCase().includes(searchLower)
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Year*</label>
+            <Input 
+              name="year"
+              value={formData.year}
+              onChange={handleChange}
+              placeholder="e.g. 2021"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Make*</label>
+            <Input 
+              name="make"
+              value={formData.make}
+              onChange={handleChange}
+              placeholder="e.g. Toyota"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Model*</label>
+            <Input 
+              name="model"
+              value={formData.model}
+              onChange={handleChange}
+              placeholder="e.g. Camry"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Price ($)*</label>
+            <Input 
+              name="price"
+              value={formData.price}
+              onChange={handleChange}
+              placeholder="e.g. 25000"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Mileage</label>
+            <Input 
+              name="mileage"
+              value={formData.mileage}
+              onChange={handleChange}
+              placeholder="e.g. 15000"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Condition</label>
+            <Select 
+              value={formData.condition} 
+              onValueChange={(value) => handleSelectChange("condition", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select condition" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Excellent">Excellent</SelectItem>
+                <SelectItem value="Good">Good</SelectItem>
+                <SelectItem value="Fair">Fair</SelectItem>
+                <SelectItem value="Poor">Poor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="md:col-span-3 space-y-2">
+            <label className="text-sm font-medium">Location</label>
+            <Input 
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              placeholder="e.g. San Francisco, CA"
+            />
+          </div>
+          <div className="md:col-span-3 space-y-2">
+            <label className="text-sm font-medium">Description</label>
+            <Textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Describe the vehicle..."
+              rows={3}
+            />
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <label className="text-sm font-medium">Images</label>
+            <Button type="button" variant="outline" size="sm" onClick={handleImageAdd}>
+              <Plus className="h-4 w-4 mr-1" /> Add Image
+            </Button>
+          </div>
+          {formData.images && formData.images.length > 0 ? (
+            <div className="flex gap-2 flex-wrap">
+              {formData.images.map((img, index) => (
+                <div key={index} className="relative w-20 h-20 bg-gray-100 rounded overflow-hidden">
+                  <img src={img} alt={`Car ${index + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">No images added yet</p>
+          )}
+        </div>
+        
+        <div className="flex gap-2 justify-end pt-4 border-t">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit">
+            {initialData?.id ? 'Update Listing' : 'Create Listing'}
+          </Button>
+        </div>
+      </form>
     );
-  }) : [];
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price);
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            placeholder="Search listings..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-semibold">Car Listings</h2>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Listing
+              <Plus className="h-4 w-4 mr-2" /> Add Listing
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[800px]">
             <DialogHeader>
               <DialogTitle>Add New Car Listing</DialogTitle>
               <DialogDescription>
-                Create a new car listing with the following details.
+                Create a new car listing to sell a vehicle.
               </DialogDescription>
             </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleAddListing)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="make"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Make</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter make" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="model"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Model</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter model" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="year"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Year</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Enter year" 
-                            {...field} 
-                            onChange={e => field.onChange(parseInt(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Price</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Enter price" 
-                            {...field} 
-                            onChange={e => field.onChange(parseInt(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="mileage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mileage</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Enter mileage" 
-                            {...field} 
-                            onChange={e => field.onChange(parseInt(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="condition"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Condition</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select condition" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="new">New</SelectItem>
-                            <SelectItem value="used">Used</SelectItem>
-                            <SelectItem value="certified">Certified</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter description" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">Add Listing</Button>
-                </DialogFooter>
-              </form>
-            </Form>
+            <ListingForm 
+              onSave={handleAddListing} 
+              onCancel={() => setIsAddDialogOpen(false)} 
+            />
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Car</TableHead>
-              <TableHead>Seller</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Posted</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-10">
-                  <div className="flex justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : error ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-destructive">
-                  {error}. <Button variant="link" onClick={fetchListings}>Try again</Button>
-                </TableCell>
-              </TableRow>
-            ) : filteredListings.length > 0 ? (
-              filteredListings.map((listing) => (
-                <TableRow key={listing._id}>
-                  <TableCell>
-                    <div className="flex items-center">
-                      {listing.images && listing.images.length > 0 ? (
-                        <img
-                          src={listing.images[0]}
-                          alt={`${listing.make} ${listing.model}`}
-                          className="h-10 w-10 object-cover rounded mr-3"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 bg-gray-200 rounded flex items-center justify-center mr-3">
-                          <span className="text-gray-500 text-xs">No image</span>
-                        </div>
-                      )}
-                      <div>
-                        <div className="font-medium">{listing.make} {listing.model}</div>
-                        <div className="text-sm text-gray-500">
-                          {listing.year} • {listing.mileage.toLocaleString()} miles
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>{listing.seller.name}</div>
-                    <div className="text-sm text-gray-500">{listing.seller.email}</div>
-                  </TableCell>
-                  <TableCell>{formatPrice(listing.price)}</TableCell>
-                  <TableCell>
-                    <Select 
-                      defaultValue={listing.status} 
-                      onValueChange={(value: "active" | "sold" | "pending" | "draft") => handleUpdateListingStatus(listing._id, value)}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active" className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          Active
-                        </SelectItem>
-                        <SelectItem value="pending" className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-yellow-500" />
-                          Pending
-                        </SelectItem>
-                        <SelectItem value="sold" className="flex items-center gap-2">
-                          <XCircle className="h-4 w-4 text-red-500" />
-                          Sold
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>{formatDate(listing.createdAt)}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setEditListing(listing);
-                          form.reset({
-                            make: listing.make,
-                            model: listing.model,
-                            year: listing.year,
-                            price: listing.price,
-                            mileage: listing.mileage,
-                            condition: listing.condition,
-                            description: listing.description,
-                            features: listing.features,
-                          });
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete the car listing for "{listing.make} {listing.model}". This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleDeleteListing(listing._id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  No car listings found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Edit Listing Dialog */}
+      {/* Edit listing dialog */}
       <Dialog open={!!editListing} onOpenChange={(open) => !open && setEditListing(null)}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[800px]">
           <DialogHeader>
             <DialogTitle>Edit Car Listing</DialogTitle>
             <DialogDescription>
-              Update car listing details below.
+              Update your car listing details.
             </DialogDescription>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleEditListing)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="make"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Make</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter make" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="model"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Model</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter model" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="year"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Year</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="Enter year" 
-                          {...field} 
-                          onChange={e => field.onChange(parseInt(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Price</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="Enter price" 
-                          {...field} 
-                          onChange={e => field.onChange(parseInt(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="mileage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mileage</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="Enter mileage" 
-                          {...field} 
-                          onChange={e => field.onChange(parseInt(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="condition"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Condition</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select condition" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="new">New</SelectItem>
-                          <SelectItem value="used">Used</SelectItem>
-                          <SelectItem value="certified">Certified</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter description" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditListing(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Update Listing</Button>
-              </DialogFooter>
-            </form>
-          </Form>
+          {editListing && (
+            <ListingForm 
+              initialData={editListing} 
+              onSave={handleEditListing} 
+              onCancel={() => setEditListing(null)} 
+            />
+          )}
         </DialogContent>
       </Dialog>
+
+      <Tabs defaultValue="all">
+        <TabsList>
+          <TabsTrigger value="all">All Listings</TabsTrigger>
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="sold">Sold</TabsTrigger>
+          <TabsTrigger value="draft">Drafts</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all" className="mt-4">
+          <div className="grid grid-cols-1 gap-4">
+            {listings.map((listing) => (
+              <Card key={listing.id}>
+                <CardContent className="p-0">
+                  <div className="flex flex-col md:flex-row">
+                    <div className="md:w-1/4 h-48 md:h-auto bg-gray-100">
+                      {listing.images && listing.images.length > 0 ? (
+                        <img 
+                          src={listing.images[0]} 
+                          alt={listing.title} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          No Image
+                        </div>
+                      )}
+                    </div>
+                    <div className="md:w-3/4 p-6">
+                      <div className="flex justify-between mb-2">
+                        <h3 className="text-xl font-semibold">{listing.title}</h3>
+                        <Badge className={statusColors[listing.status]}>
+                          {listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Price</p>
+                          <p className="font-medium">${Number(listing.price).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Mileage</p>
+                          <p className="font-medium">{Number(listing.mileage).toLocaleString()} mi</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Condition</p>
+                          <p className="font-medium">{listing.condition}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Location</p>
+                          <p className="font-medium">{listing.location}</p>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 mb-4 line-clamp-2">{listing.description}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to={`/cars/details/${listing.id}`}>
+                            <Eye className="h-4 w-4 mr-1" /> View
+                          </Link>
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setEditListing(listing)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" /> Edit
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-destructive border-destructive">
+                              <Trash className="h-4 w-4 mr-1" /> Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete the listing for "{listing.title}". This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDeleteListing(listing.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                        
+                        {listing.status !== "sold" && (
+                          <Select 
+                            value={listing.status} 
+                            onValueChange={(value) => handleStatusChange(listing.id, value as CarListing['status'])}
+                          >
+                            <SelectTrigger className="h-9 w-32">
+                              <SelectValue placeholder="Change Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="sold">Sold</SelectItem>
+                              <SelectItem value="draft">Draft</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {listings.length === 0 && (
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <Car className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-1">No Listings Yet</h3>
+                <p className="text-gray-500 mb-4">You haven't created any car listings yet.</p>
+                <Button onClick={() => setIsAddDialogOpen(true)}>Create Your First Listing</Button>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+        
+        {/* Other tabs would filter the listings by status */}
+        {["active", "pending", "sold", "draft"].map((status) => (
+          <TabsContent key={status} value={status} className="mt-4">
+            <div className="grid grid-cols-1 gap-4">
+              {listings.filter(listing => listing.status === status).length > 0 ? (
+                listings
+                  .filter(listing => listing.status === status)
+                  .map((listing) => (
+                    <Card key={listing.id}>
+                      <CardContent className="p-0">
+                        <div className="flex flex-col md:flex-row">
+                          <div className="md:w-1/4 h-48 md:h-auto bg-gray-100">
+                            {listing.images && listing.images.length > 0 ? (
+                              <img 
+                                src={listing.images[0]} 
+                                alt={listing.title} 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                No Image
+                              </div>
+                            )}
+                          </div>
+                          <div className="md:w-3/4 p-6">
+                            <div className="flex justify-between mb-2">
+                              <h3 className="text-xl font-semibold">{listing.title}</h3>
+                              <Badge className={statusColors[listing.status]}>
+                                {listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                              <div>
+                                <p className="text-sm text-gray-500">Price</p>
+                                <p className="font-medium">${Number(listing.price).toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500">Mileage</p>
+                                <p className="font-medium">{Number(listing.mileage).toLocaleString()} mi</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500">Condition</p>
+                                <p className="font-medium">{listing.condition}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500">Location</p>
+                                <p className="font-medium">{listing.location}</p>
+                              </div>
+                            </div>
+                            <p className="text-gray-700 mb-4 line-clamp-2">{listing.description}</p>
+                            <div className="flex flex-wrap gap-2">
+                              <Button variant="outline" size="sm" asChild>
+                                <Link to={`/cars/details/${listing.id}`}>
+                                  <Eye className="h-4 w-4 mr-1" /> View
+                                </Link>
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => setEditListing(listing)}
+                              >
+                                <Edit className="h-4 w-4 mr-1" /> Edit
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="outline" size="sm" className="text-destructive border-destructive">
+                                    <Trash className="h-4 w-4 mr-1" /> Delete
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will permanently delete the listing for "{listing.title}". This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => handleDeleteListing(listing.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                              
+                              {listing.status !== "sold" && (
+                                <Select 
+                                  value={listing.status} 
+                                  onValueChange={(value) => handleStatusChange(listing.id, value as CarListing['status'])}
+                                >
+                                  <SelectTrigger className="h-9 w-32">
+                                    <SelectValue placeholder="Change Status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="sold">Sold</SelectItem>
+                                    <SelectItem value="draft">Draft</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <Car className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-1">No {status.charAt(0).toUpperCase() + status.slice(1)} Listings</h3>
+                  <p className="text-gray-500 mb-4">You don't have any {status} car listings at the moment.</p>
+                  <Button onClick={() => setIsAddDialogOpen(true)}>Create New Listing</Button>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { CarType } from "@/lib/data";
 import CarCard from "./CarCard";
@@ -23,7 +22,10 @@ interface BackendCar {
   condition: string;
   location: string;
   description: string;
-  images: string[];
+  images: Array<{
+    url: string;
+    publicId: string;
+  }>;
   seller: {
     _id: string;
     name: string;
@@ -31,6 +33,10 @@ interface BackendCar {
   status: string;
   createdAt: string;
   features?: string[];
+  exteriorColor?: string;
+  interiorColor?: string;
+  fuelType?: string;
+  transmission?: string;
 }
 
 const CarGrid: React.FC<CarGridProps> = ({ cars: initialCars, isPreview = false }) => {
@@ -61,7 +67,7 @@ const CarGrid: React.FC<CarGridProps> = ({ cars: initialCars, isPreview = false 
         
         // Convert backend cars to the format expected by the components
         const formattedCars: CarType[] = backendCars.map(car => ({
-          id: car._id, // Convert string ID to number for type compatibility
+          id: car._id,
           title: car.title || `${car.year} ${car.make} ${car.model}`,
           make: car.make,
           model: car.model,
@@ -71,18 +77,20 @@ const CarGrid: React.FC<CarGridProps> = ({ cars: initialCars, isPreview = false 
           condition: car.condition,
           location: car.location,
           description: car.description,
-          images: car.images || [],
+          // Handle images - map Cloudinary URLs
+          images: car.images?.map(img => img.url) || [],
+          // Use first image as main image or fallback to placeholder
+          image: car.images && car.images.length > 0 ? car.images[0].url : "/placeholder.svg",
           seller: car.seller?.name || "Unknown",
           features: car.features || [],
           status: car.status,
-          // Add missing required properties from CarType
-          color: "Not specified",
-          image: car.images && car.images.length > 0 ? car.images[0] : "/placeholder.svg",
-          rating: 4.5,
-          reviewCount: 0,
-          fuelType: "Not specified",
-          transmission: "automatic",
-          sellerType: "dealer"
+          // Add additional properties with proper fallbacks
+          color: car.exteriorColor || "Not specified",
+          rating: 4.5, // Default value
+          reviewCount: 0, // Default value
+          fuelType: car.fuelType || "Not specified",
+          transmission: car.transmission?.toLowerCase() === 'manual' ? 'manual' : 'automatic',
+          sellerType: "private" // Default to private seller
         }));
         
         setCars(formattedCars);
@@ -140,7 +148,14 @@ const CarGrid: React.FC<CarGridProps> = ({ cars: initialCars, isPreview = false 
       
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredCars.map((car) => (
-          <CarCard key={car.id} car={car} />
+          <CarCard 
+            key={car.id} 
+            car={{
+              ...car,
+              // Ensure the image prop is properly set
+              image: car.images && car.images.length > 0 ? car.images[0] : "/placeholder.svg"
+            }} 
+          />
         ))}
       </div>
       

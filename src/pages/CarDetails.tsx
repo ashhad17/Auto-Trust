@@ -15,26 +15,31 @@ import { Loader2 } from "lucide-react";
 
 interface CarData {
   _id: string;
+  title: string;
   make: string;
   model: string;
-  year: number;
+  year: string;
   price: number;
   mileage: number;
   condition: string;
-  status: string;
-  images: string[];
+  location: string;
   description: string;
-  features: string[];
+  images: Array<{
+    url: string;
+    publicId: string;
+  }>;
   seller: {
     _id: string;
     name: string;
-    email: string;
+    email:string;
   };
-  location: string;
-  fuelType: string;
-  transmission: string;
-  color: string;
+  status: string;
   createdAt: string;
+  features?: string[];
+  exteriorColor?: string;
+  interiorColor?: string;
+  fuelType?: string;
+  transmission?: string;
 }
 
 const CarDetails = () => {
@@ -66,7 +71,7 @@ const CarDetails = () => {
 
         if (response.data.success) {
           setCar(response.data.data);
-          setActiveImage(response.data.data.images[0] || "");
+          setActiveImage(response.data.data.images[0].url || "");
         } else {
           setError("Failed to fetch car details");
           toast({
@@ -277,7 +282,7 @@ const CarDetails = () => {
                         </div>
                         <div className="bg-gray-50 p-3 rounded">
                           <div className="text-xs text-gray-500">Exterior Color</div>
-                          <div className="font-medium">{car.color}</div>
+                          <div className="font-medium">{car.interiorColor}</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded">
                           <div className="text-xs text-gray-500">Condition</div>

@@ -45,12 +45,79 @@ const carSchema = new mongoose.Schema({
     default: 'active'
   },
   features: [String],
-  images: [String],
+  images: [
+    {
+      url: {
+        type: String,
+        required: true
+      },
+      publicId: {
+        type: String,
+        required: true
+      }
+    }
+  ],
+  
+  // Document fields
+  rcDocument: {
+    url: {
+      type: String,
+      required: false
+    },
+    publicId: {
+      type: String,
+      required: false
+    }
+  },
+  insuranceDocument: {
+    url: {
+      type: String,
+      required: false
+    },
+    publicId: {
+      type: String,
+      required: false
+    }
+  },
+  pucDocument: {
+    url: {
+      type: String,
+      required: false
+    },
+    publicId: {
+      type: String,
+      required: false
+    }
+  },
+  
+  // Additional car specification fields
+  exteriorColor: {
+    type: String,
+    required: false
+  },
+  interiorColor: {
+    type: String,
+    required: false
+  },
+  fuelType: {
+    type: String,
+    enum: ['Gasoline', 'Diesel', 'Hybrid', 'Electric', 'Other'],
+    required: false
+  },
+  transmission: {
+    type: String,
+    enum: ['Automatic', 'Manual', 'CVT', 'Semi-Automatic'],
+    required: false
+  },
+  
+  // Seller information
   seller: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
+  
+  // Timestamps
   createdAt: {
     type: Date,
     default: Date.now
@@ -67,4 +134,4 @@ carSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('Car', carSchema); 
+module.exports = mongoose.model('Car', carSchema);

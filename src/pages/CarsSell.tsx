@@ -15,14 +15,42 @@ import { Car, ChevronDown, Plus, Upload, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-
+import axios from 'axios';
 const makes = ["Toyota", "Honda", "Ford", "Chevrolet", "BMW", "Mercedes-Benz", "Audi", "Nissan", "Hyundai", "Kia"];
 
+const uploadToCloudinary = async (file: File): Promise<{ url: string; publicId: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', 'auto_trust'); // Your upload preset here
+
+  try {
+    const response = await axios.post('https://api.cloudinary.com/v1_1/dquspyuhw/upload', formData);
+
+    // Axios automatically parses the response, so you can directly access `data`
+    const { secure_url, public_id } = response.data;
+
+    return {
+      url: secure_url,
+      publicId: public_id,
+    };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      console.error('Error uploading to Cloudinary:', error.response?.data || error.message);
+    } else {
+      console.error('Unexpected error uploading to Cloudinary:', error);
+    }
+    throw new Error('An error occurred while uploading the file to Cloudinary.');
+  }
+};
+
+
 const CarsSell = () => {
+  
   const [activeTab, setActiveTab] = useState("sell-form");
   const [currentStep, setCurrentStep] = useState(1);
   const { toast } = useToast();
   const { isAuthenticated, openAuthModal } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     make: "",
@@ -38,11 +66,14 @@ const CarsSell = () => {
     transmission: "Automatic",
     bodyType: "Sedan",
     features: [] as string[],
-    images: [] as string[],
+    images: [] as (string | File)[],
     contactName: "",
     contactPhone: "",
     contactEmail: "",
     location: "",
+    rcDocument: null as File | null,
+    insuranceDocument: null as File | null,
+    pucDocument: null as File | null,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -50,15 +81,26 @@ const CarsSell = () => {
     setFormData({ ...formData, [name]: value });
   };
 
+  const handleDocumentUpload = (name: string, file: File) => {
+    setFormData({ ...formData, [name]: file });
+  };
+
+  const handleRemoveDocument = (name: string) => {
+    setFormData({ ...formData, [name]: null });
+  };
+
   const handleSelectChange = (name: string, value: string) => {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleAddImage = () => {
-    // In a real app, this would open a file picker
-    // For demo purposes, let's just add a placeholder image URL
-    const newImage = `https://source.unsplash.com/featured/?car,${formData.make || 'vehicle'}&${Date.now()}`;
-    setFormData({ ...formData, images: [...formData.images, newImage] });
+  const handleAddImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newImages = [...formData.images];
+      for (let i = 0; i < e.target.files.length; i++) {
+        newImages.push(e.target.files[i]);
+      }
+      setFormData({ ...formData, images: newImages });
+    }
   };
   
   const handleRemoveImage = (index: number) => {
@@ -67,7 +109,7 @@ const CarsSell = () => {
     setFormData({ ...formData, images: newImages });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!isAuthenticated) {
@@ -75,14 +117,102 @@ const CarsSell = () => {
       return;
     }
     
-    // In a real app, this would submit the form data to a backend
-    toast({
-      title: "Listing Created!",
-      description: "Your vehicle listing has been submitted successfully.",
-    });
+    setIsSubmitting(true);
     
-    // Reset form and navigate to next step
-    setCurrentStep(4);
+    try {
+      // Upload images to Cloudinary
+      const imageUploads = formData.images.map(async (image) => {
+        if (typeof image === 'string') {
+          // Skip if it's already a URL (demo placeholder)
+          return { url: image, publicId: `demo-${Date.now()}` };
+        }
+        
+        // Upload the actual file
+        return await uploadToCloudinary(image);
+      });
+
+      // Upload documents to Cloudinary
+      const documentUploads = [];
+      
+      if (formData.rcDocument) {
+        documentUploads.push(uploadToCloudinary(formData.rcDocument)
+          .then(result => ({ type: 'rcDocument', ...result })));
+      }
+      
+      if (formData.insuranceDocument) {
+        documentUploads.push(uploadToCloudinary(formData.insuranceDocument)
+          .then(result => ({ type: 'insuranceDocument', ...result })));
+      }
+      
+      if (formData.pucDocument) {
+        documentUploads.push(uploadToCloudinary(formData.pucDocument)
+          .then(result => ({ type: 'pucDocument', ...result })));
+      }
+
+      // Wait for all uploads to complete
+      const [uploadedImages, ...uploadedDocuments] = await Promise.all([
+        Promise.all(imageUploads),
+        ...documentUploads,
+      ]);
+
+      // Prepare the data for backend
+      const carData = {
+        title: `${formData.year} ${formData.make} ${formData.model}`,
+        make: formData.make,
+        model: formData.model,
+        year: formData.year,
+        mileage: formData.mileage,
+        price: formData.price,
+        description: formData.description,
+        condition: formData.condition,
+        exteriorColor: formData.exteriorColor,
+        interiorColor: formData.interiorColor,
+        fuelType: formData.fuelType,
+        transmission: formData.transmission,
+        bodyType: formData.bodyType,
+        features: formData.features,
+        images: uploadedImages,
+        contactName: formData.contactName,
+        contactPhone: formData.contactPhone,
+        contactEmail: formData.contactEmail,
+        location: formData.location,
+        rcDocument: uploadedDocuments.find(doc => doc?.type === 'rcDocument') || null,
+        insuranceDocument: uploadedDocuments.find(doc => doc?.type === 'insuranceDocument') || null,
+        pucDocument: uploadedDocuments.find(doc => doc?.type === 'pucDocument') || null,
+        status: 'active',
+      };
+console.log("Car Data "+carData);
+      // Send to your backend API
+      const response = await fetch('http://localhost:5000/api/v1/cars', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(carData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create listing');
+      }
+
+      // Success
+      toast({
+        title: "Listing Created!",
+        description: "Your vehicle listing has been submitted successfully.",
+      });
+      
+      setCurrentStep(4);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      toast({
+        title: "Error",
+        description: "There was an error submitting your listing. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const features = [
@@ -293,13 +423,13 @@ const CarsSell = () => {
             </div>
           </div>
         );
-      
+     
       case 2:
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-semibold">Vehicle Photos & Features</h3>
+            <h3 className="text-lg font-semibold">Vehicle Photos, Features & Documents</h3>
             
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <label className="text-sm font-medium">Photos</label>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {formData.images.map((img, index) => (
@@ -331,8 +461,165 @@ const CarsSell = () => {
                 </button>
               </div>
               <p className="text-xs text-gray-500">Upload up to 10 photos. First photo will be used as the main image.</p>
+            </div> */}
+            {
+    /* Photos section in step 2 */
+    <div className="space-y-4">
+      <label className="text-sm font-medium">Photos</label>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        {formData.images.map((img, index) => {
+          const imgSrc = typeof img === 'string' ? img : URL.createObjectURL(img);
+          return (
+            <div key={index} className="relative aspect-square bg-gray-100 rounded-md overflow-hidden">
+              <img 
+                src={imgSrc} 
+                alt={`Car photo ${index + 1}`} 
+                className="w-full h-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => handleRemoveImage(index)}
+                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          );
+        })}
+        
+        <label className="flex flex-col items-center justify-center aspect-square bg-gray-100 border-2 border-dashed border-gray-300 rounded-md hover:border-gray-400 cursor-pointer">
+          <Upload className="h-8 w-8 text-gray-400 mb-1" />
+          <span className="text-sm text-gray-500">Add Photo</span>
+          <input
+            type="file"
+            multiple
+            accept="image/*"
+            className="hidden"
+            onChange={handleAddImage}
+          />
+        </label>
+      </div>
+      <p className="text-xs text-gray-500">Upload up to 10 photos. First photo will be used as the main image.</p>
+    </div>
+  }
+
+
+            {/* New Documents Upload Section */}
+            <div className="space-y-4">
+              <label className="text-sm font-medium">Vehicle Documents</label>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* RC Document Upload */}
+                <div className="border rounded-md p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">RC Document</span>
+                    {formData.rcDocument && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDocument("rcDocument")}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {formData.rcDocument ? (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <svg className="h-5 w-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {formData.rcDocument.name}
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4 hover:border-gray-400 cursor-pointer">
+                      <Upload className="h-6 w-6 text-gray-400 mb-1" />
+                      <span className="text-sm text-gray-500">Upload RC</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={(e) => e.target.files && handleDocumentUpload("rcDocument", e.target.files[0])}
+                      />
+                    </label>
+                  )}
+                </div>
+                
+                {/* Insurance Document Upload */}
+                <div className="border rounded-md p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Insurance</span>
+                    {formData.insuranceDocument && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDocument("insuranceDocument")}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {formData.insuranceDocument ? (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <svg className="h-5 w-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {formData.insuranceDocument.name}
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4 hover:border-gray-400 cursor-pointer">
+                      <Upload className="h-6 w-6 text-gray-400 mb-1" />
+                      <span className="text-sm text-gray-500">Upload Insurance</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={(e) => e.target.files && handleDocumentUpload("insuranceDocument", e.target.files[0])}
+                      />
+                    </label>
+                  )}
+                </div>
+                
+                {/* PUC Document Upload */}
+                <div className="border rounded-md p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">PUC Certificate</span>
+                    {formData.pucDocument && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDocument("pucDocument")}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {formData.pucDocument ? (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <svg className="h-5 w-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {formData.pucDocument.name}
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4 hover:border-gray-400 cursor-pointer">
+                      <Upload className="h-6 w-6 text-gray-400 mb-1" />
+                      <span className="text-sm text-gray-500">Upload PUC</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={(e) => e.target.files && handleDocumentUpload("pucDocument", e.target.files[0])}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">Upload clear scans or photos of your vehicle documents (PDF, JPG, PNG).</p>
             </div>
             
+            {/* Features section remains the same */}
             <div className="space-y-4">
               <label className="text-sm font-medium">Features</label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -435,9 +722,9 @@ const CarsSell = () => {
               <Button variant="outline" onClick={prevStep}>
                 Previous Step
               </Button>
-              <Button onClick={handleSubmit}>
-                Submit Listing
-              </Button>
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+    {isSubmitting ? "Submitting..." : "Submit Listing"}
+  </Button>
             </div>
           </div>
         );
