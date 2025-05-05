@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import axios from 'axios';
+import AuthModal from "@/components/auth/AuthModal";
 const makes = ["Toyota", "Honda", "Ford", "Chevrolet", "BMW", "Mercedes-Benz", "Audi", "Nissan", "Hyundai", "Kia"];
 
 const uploadToCloudinary = async (file: File): Promise<{ url: string; publicId: string }> => {
@@ -895,7 +896,7 @@ console.log("Car Data "+carData);
           </div>
         </div>
       </main>
-      
+      <AuthModal />
       <Footer />
     </>
   );

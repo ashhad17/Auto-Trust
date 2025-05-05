@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
+import AuthModal from "@/components/auth/AuthModal";
 import { Car, Calendar, MapPin, Info, MessageSquare } from "lucide-react";
 import Modal from "@/components/ui/modal";
 import { useToast } from "@/hooks/use-toast";
@@ -130,6 +131,7 @@ const CarDetails = () => {
             <Button>Browse All Cars</Button>
           </Link>
         </div>
+        <AuthModal />
         <Footer />
       </>
     );

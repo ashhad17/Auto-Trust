@@ -12,6 +12,8 @@ type User = {
   avatar?: string;
   phone?: string;
   joinedDate?: string;
+  address?: string;
+  
 };
 
 type AuthContextType = {

@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import CarGrid from "@/components/car/CarGrid";
 import { Button } from "@/components/ui/button";
+import AuthModal from "@/components/auth/AuthModal";
 
 const CarsBuy = () => {
   return (
@@ -39,6 +40,7 @@ const CarsBuy = () => {
           {/* Use CarGrid without providing cars - it will fetch them from the API */}
           <CarGrid />
         </section>
+        <AuthModal />
       </main>
       
       <Footer />
