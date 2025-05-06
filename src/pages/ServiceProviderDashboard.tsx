@@ -13,22 +13,60 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import axios from "axios";
+import BookingStatusDropdown from "@/components/ui/bookingStatusDropDown";
 
 const ServiceProviderDashboard = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [services, setServices] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [bookingStatus, setBookingStatus] = useState<BookingStatus>('pending');
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [serviceProviderResponse, setServiceProviderResponse] = useState(null);
+  type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
 
+  interface Booking {
+    id: string;
+    status: BookingStatus;
+    // other properties...
+  }
+  
   useEffect(() => {
-    if (isAuthenticated && user?.role === "service_provider") {
+    if (isAuthenticated && user && user?.role === "service_provider") {
       fetchProviderData();
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user,bookingStatus]);
 
+  const updateBookingStatus = async (bookingId: string, newStatus: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.patch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/v1/bookings/${bookingId}/status`,
+        { status: newStatus },
+        
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setBookingStatus(newStatus as BookingStatus);
+  
+      toast({
+        title: "Booking Updated",
+        description: `Status changed to "${newStatus}" successfully.`,
+        
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error updating booking status:", error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update booking status. Try again.",
+        variant: "destructive",
+      });
+    }
+     
+  };
+  
   const fetchProviderData = async () => {
     setIsLoading(true);
     try {
@@ -41,14 +79,24 @@ const ServiceProviderDashboard = () => {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-
-      // Fetch bookings for this provider
-      const bookingsResponse = await axios.get(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/v1/bookings/provider`,
+      const serviceProviderResponse = await axios.get(
+        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/v1/service-providers/by-user/${user?.id}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
+      // console.log(user?.id);
+      console.log(serviceProviderResponse.data);
+      setServiceProviderResponse(serviceProviderResponse.data);
+      // Fetch bookings for this provider
+      const bookingsResponse = await axios.get(
+        `http://localhost:5000/api/v1/bookings/provider/${serviceProviderResponse.data._id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      console.log(bookingsResponse.data.data);
 
       setServices(servicesResponse.data.data || []);
       setBookings(bookingsResponse.data.data || []);
@@ -77,6 +125,11 @@ const ServiceProviderDashboard = () => {
     return <Navigate to="/" replace />;
   }
 
+  
+  const handleBookingStatusChange = (id: any, newStatus: BookingStatus) => {
+    updateBookingStatus(id, newStatus);
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Helmet>
@@ -93,7 +146,7 @@ const ServiceProviderDashboard = () => {
                   <User className="h-8 w-8 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg">{user?.name}</h3>
+                  <h3 className="font-semibold text-lg">{serviceProviderResponse?.name || "Service Provider"}</h3>
                   <p className="text-sm text-gray-500">Service Provider</p>
                 </div>
               </div>
@@ -162,7 +215,7 @@ const ServiceProviderDashboard = () => {
                           <CardTitle className="text-sm font-medium text-gray-500">Total Services</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <p className="text-3xl font-bold">{services.length}</p>
+                          <p className="text-3xl font-bold">{serviceProviderResponse?.services.length}</p>
                         </CardContent>
                       </Card>
                       <Card>
@@ -223,15 +276,15 @@ const ServiceProviderDashboard = () => {
                     <div className="flex justify-center p-12">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                     </div>
-                  ) : services.length > 0 ? (
+                  ) : serviceProviderResponse?.services.length > 0 ? (
                     <div className="space-y-4">
-                      {services.map((service, index) => (
+                      {serviceProviderResponse?.services.map((service, index) => (
                         <Card key={index}>
                           <CardContent className="p-0">
                             <div className="flex flex-col md:flex-row">
-                              <div className="md:w-1/4 h-40 bg-gray-100"></div>
+                              
                               <div className="p-6 md:w-3/4">
-                                <h3 className="text-lg font-semibold mb-2">{service.name}</h3>
+                                  <h3 className="text-lg font-semibold mb-2">{service.name}</h3>
                                 <p className="text-sm text-gray-600 mb-4">{service.description}</p>
                                 <div className="flex flex-wrap gap-4 text-sm mb-4">
                                   <div>
@@ -301,9 +354,23 @@ const ServiceProviderDashboard = () => {
                                 </div>
                                 <div className="flex gap-2 justify-end">
                                   <Button variant="outline" size="sm">View Details</Button>
-                                  {booking.status === "pending" && (
-                                    <Button size="sm">Confirm</Button>
-                                  )}
+                                  
+                                  <Select
+  value={booking.status}
+  onValueChange={(value) => handleBookingStatusChange(booking._id, value as Booking['status'])}
+>
+  <SelectTrigger className="h-9 w-40">
+    <SelectValue placeholder="Change Status" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="pending">Pending</SelectItem>
+    <SelectItem value="confirmed">Confirmed</SelectItem>
+    <SelectItem value="completed">Completed</SelectItem>
+    <SelectItem value="cancelled">Cancelled</SelectItem>
+  </SelectContent>
+</Select>
+
+
                                 </div>
                               </div>
                             </div>
@@ -330,15 +397,15 @@ const ServiceProviderDashboard = () => {
                         <div className="flex flex-col lg:flex-row gap-6">
                           <div className="lg:w-1/3 space-y-2">
                             <label className="text-sm font-medium">Full Name</label>
-                            <Input defaultValue={user?.name || ""} />
+                            <Input defaultValue={serviceProviderResponse?.name || ""} />
                           </div>
                           <div className="lg:w-1/3 space-y-2">
                             <label className="text-sm font-medium">Email</label>
-                            <Input defaultValue={user?.email || ""} />
+                            <Input defaultValue={serviceProviderResponse?.email || ""} />
                           </div>
                           <div className="lg:w-1/3 space-y-2">
                             <label className="text-sm font-medium">Phone</label>
-                            <Input defaultValue={user?.phone || ""} />
+                            <Input defaultValue={serviceProviderResponse?.phone || ""} />
                           </div>
                         </div>
                         
@@ -347,21 +414,22 @@ const ServiceProviderDashboard = () => {
                           <Textarea 
                             placeholder="Describe your business and services..." 
                             className="h-32"
+                            defaultValue={serviceProviderResponse?.description || ""}
                           />
                         </div>
                         
                         <div className="flex flex-col lg:flex-row gap-6">
                           <div className="lg:w-1/2 space-y-2">
                             <label className="text-sm font-medium">Address</label>
-                            <Input placeholder="Street Address" />
+                            <Input defaultValue={serviceProviderResponse?.location.address || ""} placeholder="Street Address" />
                           </div>
                           <div className="lg:w-1/2 space-y-2">
                             <label className="text-sm font-medium">City</label>
-                            <Input placeholder="City" />
+                            <Input defaultValue={serviceProviderResponse?.location.city || ""}  placeholder="City" />
                           </div>
                         </div>
                         
-                        <div className="flex flex-col lg:flex-row gap-6">
+                        {/* <div className="flex flex-col lg:flex-row gap-6">
                           <div className="lg:w-1/2 space-y-2">
                             <label className="text-sm font-medium">Specialization</label>
                             <Select>
@@ -381,7 +449,7 @@ const ServiceProviderDashboard = () => {
                             <label className="text-sm font-medium">Years in Business</label>
                             <Input type="number" placeholder="Years of experience" />
                           </div>
-                        </div>
+                        </div> */}
                         
                         <div className="pt-4">
                           <Button>Save Changes</Button>

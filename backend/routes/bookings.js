@@ -9,7 +9,8 @@ const {
   deleteBooking,
   updateBookingStatus,
   getProviderBookings,
-  checkAvailability
+  checkAvailability,
+  changeBookingStatus
 } = require('../controllers/bookingController');
 const { validateBooking, validateBookingStatus, handleValidationErrors } = require('../middleware/validate');
 
@@ -27,6 +28,11 @@ router.get('/provider/:id', protect, authorize('service_provider','admin'), getP
 // @desc    Get single booking
 // @access  Private
 router.get('/:id', protect, getBooking);
+
+// @route   PATCH /api/v1/bookings/:id/status
+// @desc    Update booking status
+// @access  Private
+router.patch('/:id/status', protect, changeBookingStatus);
 
 // @route   POST /api/v1/bookings
 // @desc    Create new booking

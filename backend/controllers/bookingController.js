@@ -381,10 +381,6 @@ exports.getProviderBookings = async (req, res, next) => {
         path: 'user',
         select: 'name email phone'
       })
-      .populate({
-        path: 'service',
-        select: 'name price duration'
-      })
       .sort('-createdAt');
 
     res.status(200).json({
@@ -436,3 +432,20 @@ exports.checkAvailability = async (req, res, next) => {
     next(err);
   }
 }; 
+//change booking status
+exports.changeBookingStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const booking = await Booking.findByIdAndUpdate(id, { status }, { new: true });
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking status updated successfully',
+      data: booking
+    });
+  } catch (err) {
+    next(err);
+  }
+};

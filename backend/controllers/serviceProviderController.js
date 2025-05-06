@@ -84,6 +84,18 @@ exports.getServiceProviders = async (req, res, next) => {
   }
 };
 
+// Example function to get service provider ID by user ID
+const getServiceProviderIdByUserId = async (userId) => {
+  const serviceProvider = await ServiceProvider.findOne({ user: userId }).select('_id');
+  
+  if (!serviceProvider) {
+    throw new Error('Service provider not found for this user.');
+  }
+
+  return serviceProvider._id;
+};
+
+
 // @desc    Get single service provider
 // @route   GET /api/v1/service-providers/:id
 // @access  Public

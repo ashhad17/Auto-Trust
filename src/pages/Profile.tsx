@@ -332,10 +332,12 @@ const handleUploadClick = async () => {
                   <User className="h-4 w-4 mr-2" />
                   General
                 </TabsTrigger>
+                {user.role!=='service_provider'?(
                 <TabsTrigger value="cars">
-                  <Car className="h-4 w-4 mr-2" />
-                  My Cars
-                </TabsTrigger>
+                <Car className="h-4 w-4 mr-2" />
+                My Cars
+              </TabsTrigger>):('')
+                }
                 <TabsTrigger value="security">
                   <Shield className="h-4 w-4 mr-2" />
                   Security

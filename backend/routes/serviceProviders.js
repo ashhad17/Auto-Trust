@@ -12,6 +12,7 @@ const {
 } = require('../controllers/serviceProviderController');
 const { validateServiceProvider, validateServiceProviderStatus, handleValidationErrors } = require('../middleware/validate');
 const upload = require('../middleware/upload');
+const ServiceProvider = require('../models/ServiceProvider');
 
 // @route   GET /api/v1/service-providers
 // @desc    Get all service providers
@@ -22,6 +23,20 @@ router.get('/', getServiceProviders);
 // @desc    Get single service provider
 // @access  Public
 router.get('/:id', getServiceProvider);
+router.get('/by-user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const serviceProvider = await ServiceProvider.findOne({ user: userId });
+
+    if (!serviceProvider) {
+      return res.status(404).json({ error: 'Service provider not found' });
+    }
+
+    res.json(serviceProvider);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // @route   POST /api/v1/service-providers
 // @desc    Create new service provider
