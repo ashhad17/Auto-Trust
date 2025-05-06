@@ -21,7 +21,7 @@ router.get('/', protect, getBookings);
 // @route   GET /api/v1/bookings/provider
 // @desc    Get bookings for a service provider
 // @access  Private
-router.get('/provider', protect, authorize('service_provider','admin'), getProviderBookings);
+router.get('/provider/:id', protect, authorize('service_provider','admin'), getProviderBookings);
 
 // @route   GET /api/v1/bookings/:id
 // @desc    Get single booking

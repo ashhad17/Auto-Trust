@@ -45,13 +45,14 @@ const uploadToCloudinary = async (file: File): Promise<{ url: string; publicId: 
 };
 
 
-const CarsSell = () => {
+const CarForm = () => {
   
   const [activeTab, setActiveTab] = useState("sell-form");
   const [currentStep, setCurrentStep] = useState(1);
   const { toast } = useToast();
   const { isAuthenticated, openAuthModal } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [formData, setFormData] = useState({
     make: "",
     model: "",
@@ -765,135 +766,17 @@ console.log("Car Data "+carData);
 
   return (
     <>
-      <Helmet>
-        <title>Sell Your Car | WheelsTrust</title>
-      </Helmet>
-      
-      <Navbar />
+     
       
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-                <div>
-                  <h1 className="text-3xl font-bold mb-2">Sell Your Car</h1>
-                  <p className="text-gray-600">List your vehicle on WheelsTrust and reach thousands of potential buyers.</p>
-                </div>
-                
-                <TabsList className="grid w-full sm:w-auto grid-cols-2 sm:grid-cols-1">
-                  <TabsTrigger value="sell-form">Sell Your Car</TabsTrigger>
-                  <TabsTrigger value="selling-tips">Selling Tips</TabsTrigger>
-                </TabsList>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <TabsContent value="sell-form" className="p-0">
-                  {currentStep < 4 && (
-                    <div className="bg-gray-50 border-b px-6 py-4">
-                      <div className="flex items-center">
-                        <div className={`flex items-center justify-center w-8 h-8 rounded-full mr-2 ${currentStep >= 1 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>
-                          1
-                        </div>
-                        <div className="h-1 w-full bg-gray-200">
-                          <div className={`h-1 ${currentStep >= 2 ? 'bg-primary' : 'bg-gray-200'}`} style={{ width: '100%' }}></div>
-                        </div>
-                        <div className={`flex items-center justify-center w-8 h-8 rounded-full mx-2 ${currentStep >= 2 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>
-                          2
-                        </div>
-                        <div className="h-1 w-full bg-gray-200">
-                          <div className={`h-1 ${currentStep >= 3 ? 'bg-primary' : 'bg-gray-200'}`} style={{ width: '100%' }}></div>
-                        </div>
-                        <div className={`flex items-center justify-center w-8 h-8 rounded-full ml-2 ${currentStep >= 3 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>
-                          3
-                        </div>
-                      </div>
-                      <div className="flex justify-between text-xs mt-1">
-                        <span>Vehicle Details</span>
-                        <span>Photos & Features</span>
-                        <span>Contact Info</span>
-                      </div>
-                    </div>
-                  )}
-                  
+          
                   <div className="p-6">
                     <form>
                       {renderStep()}
                     </form>
                   </div>
-                </TabsContent>
-                
-                <TabsContent value="selling-tips" className="p-6 space-y-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">Tips to Sell Your Car Quickly</h3>
-                    
-                    <ul className="space-y-4">
-                      <li className="flex">
-                        <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">1</span>
-                        <div>
-                          <h4 className="font-medium mb-1">Take Quality Photos</h4>
-                          <p className="text-gray-600 text-sm">
-                            Clean your car thoroughly and take clear photos in good lighting from multiple angles, including the interior, exterior, and under the hood.
-                          </p>
-                        </div>
-                      </li>
-                      
-                      <li className="flex">
-                        <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">2</span>
-                        <div>
-                          <h4 className="font-medium mb-1">Set a Competitive Price</h4>
-                          <p className="text-gray-600 text-sm">
-                            Research similar vehicles in your area to determine a fair market value. Pricing your car competitively will attract more interest.
-                          </p>
-                        </div>
-                      </li>
-                      
-                      <li className="flex">
-                        <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">3</span>
-                        <div>
-                          <h4 className="font-medium mb-1">Provide Detailed Information</h4>
-                          <p className="text-gray-600 text-sm">
-                            Include maintenance history, recent repairs, and all features. Being transparent builds trust with potential buyers.
-                          </p>
-                        </div>
-                      </li>
-                      
-                      <li className="flex">
-                        <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">4</span>
-                        <div>
-                          <h4 className="font-medium mb-1">Respond Quickly</h4>
-                          <p className="text-gray-600 text-sm">
-                            Reply promptly to inquiries and be available for questions and test drives. Quick response times increase your chances of selling.
-                          </p>
-                        </div>
-                      </li>
-                      
-                      <li className="flex">
-                        <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">5</span>
-                        <div>
-                          <h4 className="font-medium mb-1">Have Documentation Ready</h4>
-                          <p className="text-gray-600 text-sm">
-                            Prepare all necessary paperwork including title, service records, and bill of sale to make the transaction smooth.
-                          </p>
-                        </div>
-                      </li>
-                    </ul>
-                  </div>
-                  
-                  <div className="bg-gray-50 border rounded-md p-4">
-                    <h4 className="font-medium mb-2">Need help selling your car?</h4>
-                    <p className="text-gray-600 text-sm mb-3">
-                      Our team of experts can help you sell your car faster. From professional photography to handling inquiries on your behalf.
-                    </p>
-                    <Button variant="outline">
-                      Learn About Concierge Service
-                    </Button>
-                  </div>
-                </TabsContent>
-              </div>
-            </Tabs>
           </div>
-        </div>
       </main>
       <AuthModal />
       <Footer />
@@ -901,4 +784,4 @@ console.log("Car Data "+carData);
   );
 };
 
-export default CarsSell;
+export default CarForm;

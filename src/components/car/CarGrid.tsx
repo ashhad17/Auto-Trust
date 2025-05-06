@@ -59,7 +59,7 @@ const CarGrid: React.FC<CarGridProps> = ({ cars: initialCars, isPreview = false 
         `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/cars`
       );
 
-      console.log("Cars API response:", response.data);
+      console.log("Cars API response:", response.data.data[0].status);
 
       if (response.data.success) {
         // Extract cars from response - handle both pagination and direct data formats
@@ -93,8 +93,12 @@ const CarGrid: React.FC<CarGridProps> = ({ cars: initialCars, isPreview = false 
           sellerType: "private" // Default to private seller
         }));
         
-        setCars(formattedCars);
-        setFilteredCars(formattedCars);
+        // Only include active cars
+const activeCars = formattedCars.filter(car => car.status === "active");
+
+setCars(activeCars);
+setFilteredCars(activeCars);
+
       } else {
         setError("Failed to fetch car listings");
         toast({

@@ -508,7 +508,7 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 };

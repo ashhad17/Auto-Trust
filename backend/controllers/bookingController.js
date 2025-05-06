@@ -375,7 +375,8 @@ exports.updateBookingStatus = async (req, res, next) => {
 exports.getProviderBookings = async (req, res, next) => {
   try {
     // Get bookings where the service provider is the current user
-    const bookings = await Booking.find({ serviceProvider: req.user.id })
+    console.log(req.params.id);
+    const bookings = await Booking.find({ serviceProvider: req.params.id })
       .populate({
         path: 'user',
         select: 'name email phone'

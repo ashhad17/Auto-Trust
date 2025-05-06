@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -11,54 +11,61 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+//how do i make it to get data from backend and display real data in component
+import axios from "axios";
+import { CarFormModal } from "./CarFormModal";
+import { jwtDecode } from "jwt-decode";
+
+interface JwtPayload {
+  id: string;
+  // add more fields if needed
+}
+
+const getUserIdFromToken = () => {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+
+  try {
+    const decoded = jwtDecode<JwtPayload>(token);
+    console.log(decoded.id);
+    return decoded.id;
+  } catch (error) {
+    console.error("Invalid token", error);
+    return null;
+  }
+};
 
 interface CarListing {
   id: string;
   title: string;
-  year: string;
   make: string;
   model: string;
+  year: string;
   price: string;
   mileage: string;
-  description: string;
-  condition: "Excellent" | "Good" | "Fair" | "Poor";
+  condition: string;
   location: string;
-  status: "active" | "sold" | "pending" | "draft";
-  images: string[];
+  description: string;
+  images: Array<{
+    url: string;
+    publicId: string;
+  }>;
+  seller: {
+    _id: string;
+    name: string;
+  };
+  status: string;
+  createdAt: string;
+  features?: string[];
+  exteriorColor?: string;
+  interiorColor?: string;
+  fuelType?: string;
+  transmission?: string;
 }
 
 const CarListingManagement: React.FC = () => {
-  const [listings, setListings] = useState<CarListing[]>([
-    {
-      id: "1",
-      title: "2018 Toyota Camry XSE",
-      year: "2018",
-      make: "Toyota",
-      model: "Camry XSE",
-      price: "19500",
-      mileage: "45000",
-      description: "Well maintained Toyota Camry with low mileage. Features include leather seats, sunroof, and premium sound system.",
-      condition: "Excellent",
-      location: "San Francisco, CA",
-      status: "active",
-      images: ["https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=300&h=200"]
-    },
-    {
-      id: "2",
-      title: "2020 Honda Accord Sport",
-      year: "2020",
-      make: "Honda",
-      model: "Accord Sport",
-      price: "23800",
-      mileage: "28000",
-      description: "One owner Honda Accord in pristine condition. Includes Honda Sensing safety features and Apple CarPlay.",
-      condition: "Excellent",
-      location: "Oakland, CA",
-      status: "active",
-      images: ["https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=300&h=200"]
-    },
-  ]);
-
+  const [listings, setListings] = useState<CarListing[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editListing, setEditListing] = useState<CarListing | null>(null);
   const { toast } = useToast();
@@ -69,63 +76,151 @@ const CarListingManagement: React.FC = () => {
     pending: "bg-yellow-100 text-yellow-800",
     draft: "bg-gray-100 text-gray-800"
   };
+  useEffect(() => {
+    
+  
+    fetchListings();
+  }, []);
+  
+  // const handleAddListing = (newListing: Partial<CarListing>) => {
+  //   const listing: CarListing = {
+  //     id: Date.now().toString(),
+  //     title: `${newListing.year} ${newListing.make} ${newListing.model}`,
+  //     year: newListing.year || "",
+  //     make: newListing.make || "",
+  //     model: newListing.model || "",
+  //     price: newListing.price || "",
+  //     mileage: newListing.mileage || "",
+  //     description: newListing.description || "",
+  //     condition: newListing.condition as "Excellent" | "Good" | "Fair" | "Poor" || "Good",
+  //     location: newListing.location || "",
+  //     status: "pending",
+  //     images: newListing.images || []
+  //   };
 
-  const handleAddListing = (newListing: Partial<CarListing>) => {
-    const listing: CarListing = {
-      id: Date.now().toString(),
-      title: `${newListing.year} ${newListing.make} ${newListing.model}`,
-      year: newListing.year || "",
-      make: newListing.make || "",
-      model: newListing.model || "",
-      price: newListing.price || "",
-      mileage: newListing.mileage || "",
-      description: newListing.description || "",
-      condition: newListing.condition as "Excellent" | "Good" | "Fair" | "Poor" || "Good",
-      location: newListing.location || "",
-      status: "active",
-      images: newListing.images || []
-    };
+  //   setListings([...listings, listing]);
+  //   setIsAddDialogOpen(false);
+    
+  //   toast({
+  //     title: "Listing Created",
+  //     description: "Your car listing has been created successfully."
+  //   });
+  // };
 
-    setListings([...listings, listing]);
+  // const handleEditListing = (updatedListing: CarListing) => {
+  //   setListings(listings.map(listing => 
+  //     listing.id === updatedListing.id ? updatedListing : listing
+  //   ));
+  //   setEditListing(null);
+    
+  //   toast({
+  //     title: "Listing Updated",
+  //     description: "Your car listing has been updated successfully."
+  //   });
+  // };
+
+  // const handleDeleteListing = (id: string) => {
+  //   setListings(listings.filter(listing => listing.id !== id));
+    
+  //   toast({
+  //     title: "Listing Deleted",
+  //     description: "The car listing has been deleted successfully."
+  //   });
+  // };
+  const fetchListings = async () => {
+    try {
+      const userId = getUserIdFromToken();
+      console.log(userId);
+      const response =
+      await axios.get(
+        `http://localhost:5000/api/v1/cars/seller/${userId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`, // <<<< Add this line
+          },
+        }
+      );
+      // replace with your real API endpoint
+      const normalizedData = response.data.data.map((item: any) => ({
+        ...item,
+        id: item._id, // normalize MongoDB _id
+      }));
+
+      setListings(normalizedData);
+    } catch (error) {
+      console.error("Error fetching listings:", error);
+      toast({
+        title: "Failed to load listings",
+        description: "Please check your connection or try again later.",
+        variant: "destructive",
+      });
+    }
+  };
+  const getToken = () => localStorage.getItem("token");
+
+const handleAddListing = async (newListing: CarListing) => {
+  const token = getToken();
+  try {
+    await axios.post("http://localhost:5000/api/v1/cars", newListing, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    toast({ title: "Listing added successfully." });
     setIsAddDialogOpen(false);
-    
-    toast({
-      title: "Listing Created",
-      description: "Your car listing has been created successfully."
-    });
-  };
+    fetchListings(); // refresh data
+  } catch (error) {
+    toast({ title: "Failed to add listing", variant: "destructive" });
+  }
+};
 
-  const handleEditListing = (updatedListing: CarListing) => {
-    setListings(listings.map(listing => 
-      listing.id === updatedListing.id ? updatedListing : listing
-    ));
+const handleEditListing = async (updatedListing: CarListing) => {
+  const token = getToken();
+  try {
+    await axios.put(
+      `http://localhost:5000/api/v1/cars/${updatedListing.id}`,
+      updatedListing,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    toast({ title: "Listing updated." });
     setEditListing(null);
-    
-    toast({
-      title: "Listing Updated",
-      description: "Your car listing has been updated successfully."
-    });
-  };
+    fetchListings(); // refresh data
+  } catch (error) {
+    toast({ title: "Failed to update", variant: "destructive" });
+  }
+};
 
-  const handleDeleteListing = (id: string) => {
-    setListings(listings.filter(listing => listing.id !== id));
-    
-    toast({
-      title: "Listing Deleted",
-      description: "The car listing has been deleted successfully."
+const handleDeleteListing = async (id: string) => {
+  const token = getToken();
+  try {
+    await axios.delete(`http://localhost:5000/api/v1/cars/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
-  };
+    toast({ title: "Listing deleted." });
+    fetchListings(); // refresh data
+  } catch (error) {
+    toast({ title: "Failed to delete", variant: "destructive" });
+  }
+};
 
-  const handleStatusChange = (id: string, status: CarListing['status']) => {
-    setListings(listings.map(listing => 
+const handleStatusChange = (id: string, status: CarListing["status"]) => {
+  setListings(
+    listings.map((listing) =>
       listing.id === id ? { ...listing, status } : listing
-    ));
-    
-    toast({
-      title: "Status Updated",
-      description: `Listing status has been changed to ${status}.`
-    });
-  };
+    )
+  );
+
+  toast({
+    title: "Status Updated",
+    description: `Listing status has been changed to ${status}.`,
+  });
+};
 
   // Form component for add/edit
   const ListingForm = ({ initialData, onSave, onCancel }: { 
@@ -167,7 +262,7 @@ const CarListingManagement: React.FC = () => {
       const images = formData.images || [];
       setFormData({ 
         ...formData, 
-        images: [...images, "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=300&h=200"] 
+        images: [...images, {url: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=300&h=200", publicId: "123"}] 
       });
       
       toast({
@@ -287,7 +382,7 @@ const CarListingManagement: React.FC = () => {
             <div className="flex gap-2 flex-wrap">
               {formData.images.map((img, index) => (
                 <div key={index} className="relative w-20 h-20 bg-gray-100 rounded overflow-hidden">
-                  <img src={img} alt={`Car ${index + 1}`} className="w-full h-full object-cover" />
+                  <img src={img.url} alt={`Car ${index + 1}`} className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
@@ -314,9 +409,9 @@ const CarListingManagement: React.FC = () => {
         <h2 className="text-2xl font-semibold">Car Listings</h2>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            {/* <Button>
               <Plus className="h-4 w-4 mr-2" /> Add Listing
-            </Button>
+            </Button> */}
           </DialogTrigger>
           <DialogContent className="sm:max-w-[800px]">
             <DialogHeader>
@@ -369,11 +464,15 @@ const CarListingManagement: React.FC = () => {
                   <div className="flex flex-col md:flex-row">
                     <div className="md:w-1/4 h-48 md:h-auto bg-gray-100">
                       {listing.images && listing.images.length > 0 ? (
+                        console.log(listing.images[0].url),
                         <img 
-                          src={listing.images[0]} 
+                        //can you fix this error
+
+                          src={listing.images[0].url} 
                           alt={listing.title} 
                           className="w-full h-full object-cover"
                         />
+
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-400">
                           No Image
@@ -412,13 +511,18 @@ const CarListingManagement: React.FC = () => {
                             <Eye className="h-4 w-4 mr-1" /> View
                           </Link>
                         </Button>
-                        <Button 
+                        {/* <Button 
                           variant="outline" 
                           size="sm" 
                           onClick={() => setEditListing(listing)}
                         >
                           <Edit className="h-4 w-4 mr-1" /> Edit
-                        </Button>
+                        </Button> */}
+                        
+                        {/* <Button onClick={() => setIsModalOpen(true)}>
+                        <Edit className="h-4 w-4 mr-1" /> Edit
+                          <CarFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+                        </Button> */}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="outline" size="sm" className="text-destructive border-destructive">
@@ -444,7 +548,7 @@ const CarListingManagement: React.FC = () => {
                           </AlertDialogContent>
                         </AlertDialog>
                         
-                        {listing.status !== "sold" && (
+                        {/* {listing.status !== "sold" && (
                           <Select 
                             value={listing.status} 
                             onValueChange={(value) => handleStatusChange(listing.id, value as CarListing['status'])}
@@ -459,7 +563,7 @@ const CarListingManagement: React.FC = () => {
                               <SelectItem value="draft">Draft</SelectItem>
                             </SelectContent>
                           </Select>
-                        )}
+                        )} */}
                       </div>
                     </div>
                   </div>
@@ -492,7 +596,7 @@ const CarListingManagement: React.FC = () => {
                           <div className="md:w-1/4 h-48 md:h-auto bg-gray-100">
                             {listing.images && listing.images.length > 0 ? (
                               <img 
-                                src={listing.images[0]} 
+                                src={listing.images[0].url} 
                                 alt={listing.title} 
                                 className="w-full h-full object-cover"
                               />
@@ -534,13 +638,13 @@ const CarListingManagement: React.FC = () => {
                                   <Eye className="h-4 w-4 mr-1" /> View
                                 </Link>
                               </Button>
-                              <Button 
+                              {/* <Button 
                                 variant="outline" 
                                 size="sm" 
                                 onClick={() => setEditListing(listing)}
                               >
                                 <Edit className="h-4 w-4 mr-1" /> Edit
-                              </Button>
+                              </Button> */}
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button variant="outline" size="sm" className="text-destructive border-destructive">
@@ -566,7 +670,7 @@ const CarListingManagement: React.FC = () => {
                                 </AlertDialogContent>
                               </AlertDialog>
                               
-                              {listing.status !== "sold" && (
+                              {/* {listing.status !== "sold" && (
                                 <Select 
                                   value={listing.status} 
                                   onValueChange={(value) => handleStatusChange(listing.id, value as CarListing['status'])}
@@ -581,7 +685,7 @@ const CarListingManagement: React.FC = () => {
                                     <SelectItem value="draft">Draft</SelectItem>
                                   </SelectContent>
                                 </Select>
-                              )}
+                              )} */}
                             </div>
                           </div>
                         </div>

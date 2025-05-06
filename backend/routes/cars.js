@@ -7,7 +7,8 @@ const {
   createCar,
   updateCar,
   deleteCar,
-  updateCarStatus
+  updateCarStatus,
+  getCarsBySellerId
 } = require('../controllers/carController');
 const { validateCar, validateCarStatus, handleValidationErrors } = require('../middleware/validate');
 const upload = require('../middleware/upload');
@@ -36,6 +37,9 @@ router.put('/:id', protect, authorize('user', 'admin'), upload.array('images', 5
 // @desc    Delete car
 // @access  Private
 router.delete('/:id', protect, authorize('user', 'admin'), deleteCar);
+
+//rotes to get cars by seller id
+router.get('/seller/:id', protect, authorize('user', 'admin'), getCarsBySellerId);
 
 // @route   PATCH /api/v1/cars/:id/status
 // @desc    Update car status

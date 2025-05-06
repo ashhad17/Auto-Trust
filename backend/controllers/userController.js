@@ -2,7 +2,13 @@
 const User = require('../models/User');
 const asyncHandler = require('../middleware/async');
 const ErrorResponse = require('../utils/errorResponse');
+const cloudinary = require('cloudinary');
 
+cloudinary.config({
+  cloud_name: 'dquspyuhw',
+  api_key: '224371911834243',
+  api_secret: 'kQN3bU5w3sftEEi4LsNkbUAdCLM'
+});
 // @desc    Get all users
 // @route   GET /api/v1/users
 // @access  Private/Admin
@@ -65,8 +71,10 @@ exports.createUser = asyncHandler(async (req, res, next) => {
 // @desc    Update user
 // @route   PUT /api/v1/users/:id
 // @access  Private
+// @desc    Update user
+// @route   PUT /api/v1/users/:id
+// @access  Private
 exports.updateUser = asyncHandler(async (req, res, next) => {
-  // Don't allow password to be updated through this route
   if (req.body.password) {
     delete req.body.password;
   }
@@ -78,14 +86,13 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Make sure user is updating their own profile or is admin
   if (user._id.toString() !== req.user.id && req.user.role !== 'admin') {
     return next(
       new ErrorResponse(`Not authorized to update this user`, 403)
     );
   }
 
-  // Check if email is being changed and if it already exists
+  // Check for email change
   if (req.body.email && req.body.email !== user.email) {
     const existingUser = await User.findOne({ email: req.body.email });
     if (existingUser) {
@@ -95,7 +102,18 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
     }
   }
 
-  user = await User.findByIdAndUpdate(req.params.id, req.body, {
+  // If avatarPublicId and avatar are being updated, optionally delete the old image here
+  if (req.body.avatar && req.body.avatarPublicId && user.avatarPublicId) {
+    try {
+      await cloudinary.uploader.destroy(user.avatarPublicId);
+    } catch (err) {
+      console.error("Cloudinary delete error:", err);
+    }
+  }
+  // Update user
+  user = await User.findByIdAndUpdate(req.params.id, {
+    ...req.body
+  }, {
     new: true,
     runValidators: true
   }).select('-password');
@@ -105,6 +123,7 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
     data: user
   });
 });
+
 
 // @desc    Delete user
 // @route   DELETE /api/v1/users/:id

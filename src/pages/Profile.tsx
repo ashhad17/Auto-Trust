@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import axios from "axios";
+import uploadToCloudinary from "@/hooks/cloudinary";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   User,
@@ -30,6 +31,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import CarListingManagement from "@/components/car/CarListingManagement";
 
 interface UserActivity {
   id: string;
@@ -113,7 +115,7 @@ const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     try {
       // Replace with your actual API endpoint
-      const response = await axios.put('/api/users/profile', userProfile, {
+      const response = await axios.put('http://localhost:5000/api/v1/users/' + user.id, userProfile, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
@@ -243,44 +245,52 @@ const [selectedFile, setSelectedFile] = useState<File | null>(null);
     }
   };
   
-  const handleUploadClick = async () => {
-    if (!selectedFile) return;
+const handleUploadClick = async () => {
+  if (!selectedFile) return;
+
+  try {
+    setLoading(true);
+
+    // 1. Upload to Cloudinary
+    const { url, publicId } = await uploadToCloudinary(selectedFile);
+
+    // 2. Update your backend with avatar + publicId
+    const response = await axios.put(`http://localhost:5000/api/v1/users/${user.id}`, {
+      avatar: url,
+      avatarPublicId: publicId,
+    }, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    // 3. Update state
+    setUserProfile(prev => ({
+      ...prev,
+      avatar: response.data.data.avatar,
+    }));
+
+    toast({
+      title: "Profile image updated",
+      description: "Your profile image has been successfully updated.",
+    });
+
+    // Optional: reset
+    setPreviewImage(null);
+    setSelectedFile(null);
+
+  } catch (error: any) {
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: error?.message || "Failed to upload image.",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
   
-    const formData = new FormData();
-    formData.append("profileImage", selectedFile);
-  
-    try {
-      setLoading(true);
-      const response = await axios.post("/api/users/profile-image", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-  
-      setUserProfile((prev) => ({
-        ...prev,
-        avatar: response.data.avatar,
-      }));
-  
-      toast({
-        title: "Profile image updated",
-        description: "Your profile image has been successfully updated.",
-      });
-  
-      // Optional: Reset preview
-      setPreviewImage(null);
-      setSelectedFile(null);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to upload profile image.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     setUserProfile(prev => ({
@@ -433,7 +443,7 @@ const [selectedFile, setSelectedFile] = useState<File | null>(null);
               </TabsContent>
 
               <TabsContent value="cars">
-                <Card>
+                {/* <Card>
                   <CardHeader>
                     <CardTitle>My Cars</CardTitle>
                     <CardDescription>View and manage your car listings and purchases.</CardDescription>
@@ -480,7 +490,8 @@ const [selectedFile, setSelectedFile] = useState<File | null>(null);
                       </div>
                     </div>
                   </CardContent>
-                </Card>
+                </Card> */}
+                <CarListingManagement/>
               </TabsContent>
 
               <TabsContent value="security">

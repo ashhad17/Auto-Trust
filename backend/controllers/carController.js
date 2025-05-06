@@ -1,7 +1,7 @@
 const Car = require('../models/Car');
 const ErrorResponse = require('../utils/errorResponse');
 
-// @desc    Get all car listings
+
 // @route   GET /api/v1/cars
 // @access  Public
 // exports.getCars = async (req, res, next) => {
@@ -325,7 +325,6 @@ exports.getCar = async (req, res, next) => {
   }
 };
 
-// @desc    Create new car listing
 // @route   POST /api/v1/cars
 // @access  Private
 // exports.createCar = async (req, res, next) => {
@@ -417,7 +416,7 @@ exports.deleteCar = async (req, res, next) => {
       );
     }
 
-    await car.remove();
+    await car.deleteOne();
 
     res.status(200).json({
       success: true,
@@ -427,7 +426,15 @@ exports.deleteCar = async (req, res, next) => {
     next(err);
   }
 };
-
+//get cars by seller id
+exports.getCarsBySellerId = async (req, res, next) => {
+  try {
+    const cars = await Car.find({ seller: req.params.id });
+    res.status(200).json({ success: true, data: cars });
+  } catch (err) {
+    next(err);
+  }
+};
 // @desc    Update car status
 // @route   PATCH /api/v1/cars/:id/status
 // @access  Private
